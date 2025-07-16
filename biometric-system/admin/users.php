@@ -69,56 +69,111 @@ $machines = $machineModel->getAll();
     <link rel="stylesheet" href="../assets/css/style.css">
 </head>
 <body>
-    <!-- Navbar -->
+    <!-- Navbar Overlay -->
+    <div class="navbar-overlay" id="navbarOverlay"></div>
+    
+    <!-- Advanced Navbar with Modern Toggle -->
     <nav class="navbar">
         <a href="dashboard.php" class="navbar-brand">
             <i class="fas fa-fingerprint"></i>
             نظام البايومترك
         </a>
         
-        <div class="navbar-collapse">
-            <ul class="navbar-nav">
-                <li><a href="dashboard.php">
-                    <i class="fas fa-tachometer-alt"></i>
-                    لوحة التحكم
-                </a></li>
-                <li><a href="machines.php">
-                    <i class="fas fa-desktop"></i>
-                    إدارة الأجهزة
-                </a></li>
-                <li><a href="users.php" class="active">
-                    <i class="fas fa-users"></i>
-                    إدارة المستخدمين
-                </a></li>
-                <li><a href="attendance.php">
-                    <i class="fas fa-clock"></i>
-                    سجل الحضور
-                </a></li>
-                <li><a href="commands.php">
-                    <i class="fas fa-terminal"></i>
-                    الأوامر
-                </a></li>
-                <li><a href="reports.php">
-                    <i class="fas fa-chart-bar"></i>
-                    التقارير
-                </a></li>
-                <li><a href="settings.php">
-                    <i class="fas fa-cog"></i>
-                    الإعدادات
-                </a></li>
-            </ul>
-            
-            <div class="navbar-user">
-                <i class="fas fa-user-circle"></i>
-                <span>المدير</span>
-                <a href="logout.php" style="color: rgba(255, 255, 255, 0.8); margin-right: 1rem;">
-                    <i class="fas fa-sign-out-alt"></i>
-                </a>
+        <button class="navbar-toggle" id="menuToggle" onclick="toggleNavbar()">
+            <div class="hamburger">
+                <span></span>
+                <span></span>
+                <span></span>
             </div>
-            
-            <button class="mobile-menu-btn" onclick="toggleMobileMenu()">
-                <i class="fas fa-bars"></i>
-            </button>
+        </button>
+    </nav>
+    
+    <!-- Floating Central Menu -->
+    <div class="navbar-menu" id="navbarMenu">
+        <div class="menu-header">
+            <h2 class="menu-title">إدارة المستخدمين</h2>
+            <p class="menu-subtitle">إضافة وتعديل وإدارة المستخدمين</p>
+        </div>
+        
+        <ul class="nav-items">
+            <li class="nav-item">
+                <a href="dashboard.php" class="nav-link">
+                    <div class="nav-icon">
+                        <i class="fas fa-tachometer-alt"></i>
+                    </div>
+                    <span class="nav-text">لوحة التحكم</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="machines.php" class="nav-link">
+                    <div class="nav-icon">
+                        <i class="fas fa-desktop"></i>
+                    </div>
+                    <span class="nav-text">إدارة الأجهزة</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="users.php" class="nav-link active">
+                    <div class="nav-icon">
+                        <i class="fas fa-users"></i>
+                    </div>
+                    <span class="nav-text">إدارة المستخدمين</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="attendance.php" class="nav-link">
+                    <div class="nav-icon">
+                        <i class="fas fa-clock"></i>
+                    </div>
+                    <span class="nav-text">سجل الحضور</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="commands.php" class="nav-link">
+                    <div class="nav-icon">
+                        <i class="fas fa-terminal"></i>
+                    </div>
+                    <span class="nav-text">الأوامر</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="reports.php" class="nav-link">
+                    <div class="nav-icon">
+                        <i class="fas fa-chart-bar"></i>
+                    </div>
+                    <span class="nav-text">التقارير</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="settings.php" class="nav-link">
+                    <div class="nav-icon">
+                        <i class="fas fa-cog"></i>
+                    </div>
+                    <span class="nav-text">الإعدادات</span>
+                </a>
+            </li>
+        </ul>
+        
+        <div class="user-section">
+            <div class="user-info">
+                <div class="user-avatar">
+                    <i class="fas fa-user-shield"></i>
+                </div>
+                <div class="user-details">
+                    <h4>المدير العام</h4>
+                    <p>مدير النظام</p>
+                </div>
+            </div>
+            <a href="logout.php" class="logout-btn">
+                <i class="fas fa-sign-out-alt"></i>
+                تسجيل الخروج
+            </a>
+        </div>
+    </div>
+                        <i class="fas fa-sign-out-alt"></i>
+                    </a>
+                </div>
+            </ul>
         </div>
     </nav>
 
@@ -437,12 +492,9 @@ $machines = $machineModel->getAll();
                 e.target.classList.remove('show');
             }
         });
-
-        // Mobile menu toggle
-        function toggleMobileMenu() {
-            const navbar = document.querySelector('.navbar-nav');
-            navbar.classList.toggle('mobile-show');
-        }
     </script>
+
+    <!-- Advanced Navbar Script -->
+    <script src="../assets/js/navbar.js"></script>
 </body>
 </html>

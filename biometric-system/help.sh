@@ -32,7 +32,6 @@ echo "   - راجع ملف README.md للتفاصيل"
 echo ""
 echo "📞 للمساعدة:"
 echo "   cat README.md"
-echo "   cat UPDATES.md"
 echo ""
 echo "================================="
 echo ""
