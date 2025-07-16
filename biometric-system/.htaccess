@@ -1,0 +1,53 @@
+# Security Headers
+Header always set X-Content-Type-Options nosniff
+Header always set X-Frame-Options DENY
+Header always set X-XSS-Protection "1; mode=block"
+Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains"
+
+# Force HTTPS
+RewriteEngine On
+RewriteCond %{HTTPS} off
+RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+
+# Protect sensitive files
+<FilesMatch "\.(sql|log|ini|conf)$">
+    Order deny,allow
+    Deny from all
+</FilesMatch>
+
+# Protect config directory
+<Directory "config">
+    Order deny,allow
+    Deny from all
+</Directory>
+
+# Protect logs directory
+<Directory "logs">
+    Order deny,allow
+    Deny from all
+</Directory>
+
+# PHP Security
+php_flag expose_php off
+php_flag register_globals off
+php_flag allow_url_fopen off
+php_flag allow_url_include off
+
+# Disable server signature
+ServerSignature Off
+
+# Set default error page
+ErrorDocument 404 /404.html
+ErrorDocument 403 /403.html
+ErrorDocument 500 /500.html
+
+# File upload restrictions
+php_value upload_max_filesize 10M
+php_value post_max_size 10M
+php_value max_execution_time 30
+php_value max_input_time 30
+
+# Session security
+php_value session.cookie_httponly 1
+php_value session.cookie_secure 1
+php_value session.use_only_cookies 1
