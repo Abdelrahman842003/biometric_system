@@ -9,6 +9,43 @@ function validateAdmsToken($token) {
     return hash_equals(ADMS_TOKEN, $token);
 }
 
+// IP Whitelist security (optional - for public IP access)
+function checkIPWhitelist() {
+    $allowedIPs = [
+        '127.0.0.1',           // localhost
+        '192.168.1.0/24',      // local network
+        // '203.123.45.67',    // Add specific device IPs here
+    ];
+    
+    $clientIP = $_SERVER['REMOTE_ADDR'];
+    
+    // For development, allow all IPs
+    if (defined('ALLOW_ALL_IPS') && ALLOW_ALL_IPS) {
+        return true;
+    }
+    
+    foreach ($allowedIPs as $allowedIP) {
+        if (strpos($allowedIP, '/') !== false) {
+            // CIDR notation
+            if (ip_in_range($clientIP, $allowedIP)) {
+                return true;
+            }
+        } else {
+            // Exact IP match
+            if ($clientIP === $allowedIP) {
+                return true;
+            }
+        }
+    }
+    
+    return false;
+}
+
+function ip_in_range($ip, $cidr) {
+    list($subnet, $mask) = explode('/', $cidr);
+    return (ip2long($ip) & ~((1 << (32 - $mask)) - 1)) == ip2long($subnet);
+}
+
 // Log system activity
 function logActivity($message, $data = []) {
     $logFile = __DIR__ . '/../logs/adms_' . date('Y-m-d') . '.log';
@@ -51,6 +88,14 @@ try {
         http_response_code(401);
         echo json_encode(['error' => 'Unauthorized']);
         logActivity('Unauthorized ADMS access', ['token' => $token]);
+        exit;
+    }
+    
+    // Check IP whitelist
+    if (!checkIPWhitelist()) {
+        http_response_code(403);
+        echo json_encode(['error' => 'Forbidden - IP not allowed']);
+        logActivity('Forbidden ADMS access', ['ip' => $_SERVER['REMOTE_ADDR']]);
         exit;
     }
     

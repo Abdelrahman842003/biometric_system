@@ -22,6 +22,7 @@ CREATE TABLE machines (
     ip_address VARCHAR(45) NOT NULL,
     serial_number VARCHAR(100),
     port INT DEFAULT 4370,
+    connection_type ENUM('adms', 'public_ip') DEFAULT 'adms',
     adms_enabled TINYINT(1) DEFAULT 1,
     adms_key VARCHAR(255),
     status ENUM('active', 'inactive', 'maintenance') DEFAULT 'active',
@@ -32,7 +33,8 @@ CREATE TABLE machines (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     INDEX idx_ip_port (ip_address, port),
-    INDEX idx_status (status)
+    INDEX idx_status (status),
+    INDEX idx_connection_type (connection_type)
 );
 
 -- Users Table (Biometric Users)

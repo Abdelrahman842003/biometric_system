@@ -303,6 +303,82 @@ $systemInfo = [
                 </form>
             </div>
 
+            <!-- Connection Methods Guide -->
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">
+                        <i class="fas fa-network-wired"></i>
+                        دليل طرق الاتصال مع الأجهزة
+                    </h3>
+                </div>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 2rem;">
+                    <!-- ADMS Method -->
+                    <div style="border: 2px solid var(--success); border-radius: 0.5rem; padding: 1.5rem; background: rgba(0, 214, 143, 0.05);">
+                        <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 1rem;">
+                            <i class="fas fa-cloud-upload-alt" style="color: var(--success); font-size: 1.5rem;"></i>
+                            <h4 style="color: var(--success); margin: 0;">طريقة ADMS (موصى بها)</h4>
+                        </div>
+                        
+                        <p style="margin-bottom: 1rem; color: var(--text-muted);">
+                            الجهاز يرسل البيانات تلقائياً للخادم عند تسجيل أي حضور
+                        </p>
+                        
+                        <div style="background: rgba(255, 255, 255, 0.8); padding: 1rem; border-radius: 0.25rem; margin-bottom: 1rem;">
+                            <h5 style="margin-bottom: 0.5rem;">المزايا:</h5>
+                            <ul style="margin: 0; padding-right: 1rem;">
+                                <li>البيانات تصل فوراً</li>
+                                <li>لا يحتاج اتصال مباشر</li>
+                                <li>يعمل خلف NAT/Router</li>
+                                <li>أكثر أماناً</li>
+                            </ul>
+                        </div>
+                        
+                        <div style="background: rgba(255, 255, 255, 0.8); padding: 1rem; border-radius: 0.25rem;">
+                            <h5 style="margin-bottom: 0.5rem;">خطوات الإعداد:</h5>
+                            <ol style="margin: 0; padding-right: 1rem; font-size: 0.9rem;">
+                                <li>اذهب لإعدادات الشبكة في الجهاز</li>
+                                <li>فعّل ADMS</li>
+                                <li>ضع رابط الخادم: <code style="background: #f0f0f0; padding: 0.2rem;">http://your-server.com/api/adms-endpoint.php</code></li>
+                                <li>ضع مفتاح ADMS من config/database.php</li>
+                                <li>احفظ الإعدادات</li>
+                            </ol>
+                        </div>
+                    </div>
+                    
+                    <!-- Public IP Method -->
+                    <div style="border: 2px solid var(--warning); border-radius: 0.5rem; padding: 1.5rem; background: rgba(255, 170, 0, 0.05);">
+                        <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 1rem;">
+                            <i class="fas fa-server" style="color: var(--warning); font-size: 1.5rem;"></i>
+                            <h4 style="color: var(--warning); margin: 0;">طريقة Public IP</h4>
+                        </div>
+                        
+                        <p style="margin-bottom: 1rem; color: var(--text-muted);">
+                            الخادم يطلب البيانات مباشرة من الجهاز عبر IP العام
+                        </p>
+                        
+                        <div style="background: rgba(255, 255, 255, 0.8); padding: 1rem; border-radius: 0.25rem; margin-bottom: 1rem;">
+                            <h5 style="margin-bottom: 0.5rem;">المزايا:</h5>
+                            <ul style="margin: 0; padding-right: 1rem;">
+                                <li>تحكم أكبر في التزامن</li>
+                                <li>يمكن طلب البيانات عند الحاجة</li>
+                                <li>إمكانية إدارة المستخدمين عن بُعد</li>
+                            </ul>
+                        </div>
+                        
+                        <div style="background: rgba(255, 255, 255, 0.8); padding: 1rem; border-radius: 0.25rem;">
+                            <h5 style="margin-bottom: 0.5rem;">المتطلبات:</h5>
+                            <ol style="margin: 0; padding-right: 1rem; font-size: 0.9rem;">
+                                <li>IP عام ثابت للجهاز</li>
+                                <li>فتح المنفذ 4370 في Router</li>
+                                <li>إعادة توجيه المنفذ للجهاز</li>
+                                <li>تأكد من أن الجهاز يقبل الاتصالات الخارجية</li>
+                                <li>ضع IP العام في إعدادات الجهاز</li>
+                            </ol>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <!-- Security Settings -->
             <div class="card">
                 <div class="card-header">

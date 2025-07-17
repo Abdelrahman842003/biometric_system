@@ -28,6 +28,7 @@ if (isset($_SERVER['REQUEST_METHOD']) && $_SERVER['REQUEST_METHOD'] === 'POST') 
                     'ip_address' => trim($_POST['ip_address']),
                     'serial_number' => trim($_POST['serial_number'] ?: ''),
                     'port' => (int)($_POST['port'] ?: 4370),
+                    'connection_type' => trim($_POST['connection_type'] ?: 'adms'),
                     'adms_enabled' => isset($_POST['adms_enabled']) ? 1 : 0,
                     'adms_key' => trim($_POST['adms_key'] ?: ''),
                     'status' => $_POST['status'] ?: 'active'
@@ -65,6 +66,7 @@ if (isset($_SERVER['REQUEST_METHOD']) && $_SERVER['REQUEST_METHOD'] === 'POST') 
                     'ip_address' => trim($_POST['ip_address']),
                     'serial_number' => trim($_POST['serial_number'] ?: ''),
                     'port' => (int)($_POST['port'] ?: 4370),
+                    'connection_type' => trim($_POST['connection_type'] ?: 'adms'),
                     'adms_enabled' => isset($_POST['adms_enabled']) ? 1 : 0,
                     'adms_key' => trim($_POST['adms_key'] ?: ''),
                     'status' => $_POST['status'] ?: 'active'
@@ -254,6 +256,7 @@ $machines = $machineModel->getAll();
                                 <th>الموقع</th>
                                 <th>عنوان IP</th>
                                 <th>المنفذ</th>
+                                <th>نوع الاتصال</th>
                                 <th>الحالة</th>
                                 <th>آخر تزامن</th>
                                 <th>الإجراءات</th>
@@ -267,6 +270,11 @@ $machines = $machineModel->getAll();
                                 <td><?= htmlspecialchars($machine['location']) ?></td>
                                 <td><?= htmlspecialchars($machine['ip_address']) ?></td>
                                 <td><?= $machine['port'] ?></td>
+                                <td>
+                                    <span class="status <?= $machine['connection_type'] === 'adms' ? 'online' : 'offline' ?>">
+                                        <?= $machine['connection_type'] === 'adms' ? 'ADMS' : 'Public IP' ?>
+                                    </span>
+                                </td>
                                 <td>
                                     <span class="status <?= $machine['status'] === 'active' ? 'online' : 'offline' ?>">
                                         <?= $machine['status'] === 'active' ? 'نشط' : ($machine['status'] === 'inactive' ? 'غير نشط' : 'صيانة') ?>
@@ -326,13 +334,26 @@ $machines = $machineModel->getAll();
                 </div>
                 
                 <div class="form-group">
+                    <label class="form-label" for="connectionType">نوع الاتصال <span style="color: var(--danger)">*</span></label>
+                    <select class="form-control" id="connectionType" name="connection_type" onchange="toggleConnectionFields()">
+                        <option value="adms">ADMS (Push من الجهاز)</option>
+                        <option value="public_ip">Public IP (Pull من الخادم)</option>
+                    </select>
+                    <small class="form-help">
+                        • ADMS: الجهاز يرسل البيانات تلقائياً للخادم<br>
+                        • Public IP: الخادم يطلب البيانات من الجهاز مباشرة
+                    </small>
+                </div>
+                
+                <div class="form-group">
                     <label class="form-label" for="machineSerial">الرقم التسلسلي</label>
                     <input type="text" class="form-control" id="machineSerial" name="serial_number">
                 </div>
                 
-                <div class="form-group">
+                <div class="form-group" id="admsKeyGroup">
                     <label class="form-label" for="machineAdmsKey">مفتاح ADMS</label>
-                    <input type="text" class="form-control" id="machineAdmsKey" name="adms_key">
+                    <input type="text" class="form-control" id="machineAdmsKey" name="adms_key" placeholder="يتم الحصول عليه من إعدادات الجهاز">
+                    <small class="form-help">مطلوب فقط عند استخدام ADMS</small>
                 </div>
                 
                 <div class="form-group">
@@ -344,11 +365,12 @@ $machines = $machineModel->getAll();
                     </select>
                 </div>
                 
-                <div class="form-group">
+                <div class="form-group" id="admsEnabledGroup">
                     <label class="form-label">
                         <input type="checkbox" id="machineAdmsEnabled" name="adms_enabled" checked style="margin-left: 0.5rem;">
                         تفعيل ADMS
                     </label>
+                    <small class="form-help">يظهر فقط عند اختيار نوع الاتصال ADMS</small>
                 </div>
                 
                 <div class="d-flex gap-2 justify-content-between">
@@ -363,14 +385,59 @@ $machines = $machineModel->getAll();
     </div>
 
     <style>
-        /* Additional styles for machines page if needed */
+        /* Additional styles for machines page */
+        .form-help {
+            font-size: 0.8rem;
+            color: var(--text-muted, #666);
+            margin-top: 0.25rem;
+            line-height: 1.4;
+        }
+        
+        .status.online {
+            background-color: var(--success, #28a745);
+            color: white;
+            padding: 0.25rem 0.5rem;
+            border-radius: 0.25rem;
+            font-size: 0.8rem;
+        }
+        
+        .status.offline {
+            background-color: var(--warning, #ffc107);
+            color: #333;
+            padding: 0.25rem 0.5rem;
+            border-radius: 0.25rem;
+            font-size: 0.8rem;
+        }
+        
+        #admsKeyGroup, #admsEnabledGroup {
+            transition: all 0.3s ease;
+        }
     </style>
 
     <script>
+        function toggleConnectionFields() {
+            const connectionType = document.getElementById('connectionType').value;
+            const admsKeyGroup = document.getElementById('admsKeyGroup');
+            const admsEnabledGroup = document.getElementById('admsEnabledGroup');
+            
+            if (connectionType === 'adms') {
+                admsKeyGroup.style.display = 'block';
+                admsEnabledGroup.style.display = 'block';
+                document.getElementById('machineAdmsEnabled').checked = true;
+            } else {
+                admsKeyGroup.style.display = 'none';
+                admsEnabledGroup.style.display = 'none';
+                document.getElementById('machineAdmsEnabled').checked = false;
+                document.getElementById('machineAdmsKey').value = '';
+            }
+        }
+
         function showAddMachineModal() {
             document.getElementById('modalTitle').textContent = 'إضافة جهاز جديد';
             document.getElementById('machineForm').reset();
             document.getElementById('machineId').value = '';
+            document.getElementById('connectionType').value = 'adms';
+            toggleConnectionFields(); // Initialize field visibility
             document.getElementById('machineModal').classList.add('show');
         }
 
@@ -397,9 +464,11 @@ $machines = $machineModel->getAll();
                         document.getElementById('machineIp').value = machine.ip_address || '';
                         document.getElementById('machinePort').value = machine.port || '4370';
                         document.getElementById('machineSerial').value = machine.serial_number || '';
+                        document.getElementById('connectionType').value = machine.connection_type || 'adms';
                         document.getElementById('machineAdmsKey').value = machine.adms_key || '';
                         document.getElementById('machineStatus').value = machine.status || 'active';
                         document.getElementById('machineAdmsEnabled').checked = machine.adms_enabled == 1;
+                        toggleConnectionFields(); // Update field visibility based on connection type
                         document.getElementById('machineModal').classList.add('show');
                     } else {
                         alert(data.message || 'فشل في تحميل بيانات الجهاز');
@@ -511,6 +580,13 @@ $machines = $machineModel->getAll();
         window.addEventListener('click', function(e) {
             if (e.target.classList.contains('modal')) {
                 e.target.classList.remove('show');
+            }
+        });
+
+        // Initialize connection fields visibility on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            if (document.getElementById('connectionType')) {
+                toggleConnectionFields();
             }
         });
     </script>

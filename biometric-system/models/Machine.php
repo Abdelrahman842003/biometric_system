@@ -9,8 +9,8 @@ class Machine {
     }
     
     public function create($data) {
-        $sql = "INSERT INTO machines (name, location, ip_address, serial_number, port, adms_enabled, adms_key, status) 
-                VALUES (:name, :location, :ip_address, :serial_number, :port, :adms_enabled, :adms_key, :status)";
+        $sql = "INSERT INTO machines (name, location, ip_address, serial_number, port, connection_type, adms_enabled, adms_key, status) 
+                VALUES (:name, :location, :ip_address, :serial_number, :port, :connection_type, :adms_enabled, :adms_key, :status)";
         
         $stmt = $this->db->prepare($sql);
         return $stmt->execute([
@@ -19,6 +19,7 @@ class Machine {
             ':ip_address' => $data['ip_address'],
             ':serial_number' => $data['serial_number'],
             ':port' => $data['port'] ?? DEFAULT_PORT,
+            ':connection_type' => $data['connection_type'] ?? 'adms',
             ':adms_enabled' => $data['adms_enabled'] ?? 1,
             ':adms_key' => $data['adms_key'] ?? '',
             ':status' => $data['status'] ?? 'active'
@@ -46,6 +47,7 @@ class Machine {
                     ip_address = :ip_address, 
                     serial_number = :serial_number, 
                     port = :port, 
+                    connection_type = :connection_type,
                     adms_enabled = :adms_enabled, 
                     adms_key = :adms_key, 
                     status = :status,
@@ -60,6 +62,7 @@ class Machine {
                 ':ip_address' => $data['ip_address'],
                 ':serial_number' => $data['serial_number'] ?: '',
                 ':port' => $data['port'] ?: 4370,
+                ':connection_type' => $data['connection_type'] ?: 'adms',
                 ':adms_enabled' => $data['adms_enabled'] ?: 0,
                 ':adms_key' => $data['adms_key'] ?: '',
                 ':status' => $data['status'] ?: 'active'

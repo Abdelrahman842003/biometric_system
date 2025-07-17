@@ -7,8 +7,12 @@ define('DB_PASS', '842003..');
 define('DB_CHARSET', 'utf8mb4');
 
 // Security Configuration
-define('SECRET_KEY', 'your-secret-key-here-change-in-production');
-define('ADMS_TOKEN', 'your-adms-token-here');
+define('SECRET_KEY', 'BiometricSystem2025SecretKey!@#');
+define('ADMS_TOKEN', 'ADMS_Token_2025_Secure_BiometricSystem_#$%');
+
+// IP Security (for public access)
+define('ALLOW_ALL_IPS', true);  // Set to false in production
+define('ENABLE_IP_WHITELIST', false);  // Set to true for strict IP control
 
 // System Configuration
 define('DEFAULT_PORT', 4370);
