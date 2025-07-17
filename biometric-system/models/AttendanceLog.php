@@ -72,7 +72,9 @@ class AttendanceLog {
         $sql .= " ORDER BY al.log_time DESC";
         
         if (!empty($filters['limit'])) {
-            $sql .= " LIMIT " . intval($filters['limit']);
+            $limit = intval($filters['limit']);
+            $offset = intval($filters['offset'] ?? 0);
+            $sql .= " LIMIT $limit OFFSET $offset";
         }
         
         $stmt = $this->db->prepare($sql);

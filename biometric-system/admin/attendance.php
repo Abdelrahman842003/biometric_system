@@ -90,10 +90,62 @@ $filters = [
     'date_from' => $_GET['date_from'] ?? '',
     'date_to' => $_GET['date_to'] ?? '',
     'log_type' => $_GET['log_type'] ?? '',
-    'limit' => $_GET['limit'] ?? 50
+    'offset' => $_GET['offset'] ?? 0,
+    'limit' => 5  // عرض 5 سجلات فقط
 ];
 
-// Get attendance logs
+// Handle AJAX requests for loading more records
+if (isset($_GET['ajax']) && $_GET['ajax'] === 'load_more') {
+    header('Content-Type: application/json');
+    
+    $logs = $attendanceModel->getAll($filters);
+    $hasMore = count($logs) === 5; // إذا كان العدد 5، فهناك المزيد
+    
+    ob_start();
+    foreach ($logs as $log): ?>
+        <tr>
+            <td><?= htmlspecialchars($log['user_id']) ?></td>
+            <td><?= htmlspecialchars($log['user_name'] ?? 'غير معروف') ?></td>
+            <td><?= htmlspecialchars($log['machine_name'] ?? 'غير معروف') ?></td>
+            <td><?= date('Y-m-d H:i:s', strtotime($log['log_time'])) ?></td>
+            <td>
+                <?php
+                $log_types = [
+                    'check_in' => ['text' => '🟢 حضور', 'class' => 'online'],
+                    'check_out' => ['text' => '🔴 انصراف', 'class' => 'offline'],
+                    'break_out' => ['text' => '🟡 استراحة', 'class' => 'warning'],
+                    'break_in' => ['text' => '🟢 عودة', 'class' => 'online']
+                ];
+                $type_info = $log_types[$log['log_type']] ?? ['text' => $log['log_type'], 'class' => 'warning'];
+                ?>
+                <span class="status <?= $type_info['class'] ?>">
+                    <?= $type_info['text'] ?>
+                </span>
+            </td>
+            <td>
+                <?php
+                $verify_icons = [
+                    'fingerprint' => ['icon' => 'fas fa-fingerprint', 'text' => 'بصمة الإصبع', 'color' => '#3498db'],
+                    'face' => ['icon' => 'fas fa-user-circle', 'text' => 'الوجه', 'color' => '#e74c3c'],
+                    'password' => ['icon' => 'fas fa-key', 'text' => 'يدوي', 'color' => '#9b59b6'],
+                    'fingerprint_face' => ['icon' => 'fas fa-fingerprint', 'text' => 'بصمة + وجه', 'color' => '#1abc9c']
+                ];
+                $verify_info = $verify_icons[$log['verify_type']] ?? ['icon' => 'fas fa-question', 'text' => $log['verify_type'], 'color' => '#95a5a6'];
+                ?>
+                <span style="color: <?= $verify_info['color'] ?>; display: flex; align-items: center; gap: 0.5rem;">
+                    <i class="<?= $verify_info['icon'] ?>"></i>
+                    <?= $verify_info['text'] ?>
+                </span>
+            </td>
+        </tr>
+    <?php endforeach;
+    
+    $html = ob_get_clean();
+    echo json_encode(['html' => $html, 'hasMore' => $hasMore]);
+    exit;
+}
+
+// Get attendance logs (first 5 records)
 $attendanceLogs = $attendanceModel->getAll($filters);
 $machines = $machineModel->getAll();
 $users = $userModel->getAll();
@@ -279,7 +331,7 @@ $stats = $attendanceModel->getStats($filters);
                 <div class="card-header">
                     <h3 class="card-title">البحث والتصفية</h3>
                 </div>
-                <form method="GET" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
+                <form method="GET" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;" onsubmit="resetPagination()">
                     <div class="form-group">
                         <label class="form-label">الجهاز</label>
                         <select name="machine_id" class="form-control">
@@ -347,7 +399,7 @@ $stats = $attendanceModel->getStats($filters);
                                 <th>طريقة التحقق</th>
                             </tr>
                         </thead>
-                        <tbody>
+                        <tbody id="attendanceTableBody">
                             <?php foreach ($attendanceLogs as $log): ?>
                             <tr>
                                 <td><?= htmlspecialchars($log['user_id']) ?></td>
@@ -387,6 +439,33 @@ $stats = $attendanceModel->getStats($filters);
                             <?php endforeach; ?>
                         </tbody>
                     </table>
+                    
+                    <!-- Load More Button -->
+                    <?php if (count($attendanceLogs) === 5): ?>
+                    <div style="text-align: center; padding: 1rem; border-top: 1px solid rgba(255,255,255,0.1);">
+                        <div style="margin-bottom: 0.5rem; color: rgba(255,255,255,0.7); font-size: 0.9rem;">
+                            <span id="recordsCount">عرض 5 من السجلات</span>
+                        </div>
+                        <button class="btn btn-outline" id="loadMoreBtn" onclick="loadMoreRecords()">
+                            <i class="fas fa-plus"></i>
+                            عرض المزيد (5 سجلات إضافية)
+                        </button>
+                        <div id="loadingIndicator" style="display: none; color: rgba(255,255,255,0.7);">
+                            <i class="fas fa-spinner fa-spin"></i>
+                            جاري التحميل...
+                        </div>
+                    </div>
+                    <?php elseif (count($attendanceLogs) === 0): ?>
+                    <div style="text-align: center; padding: 2rem; color: rgba(255,255,255,0.7);">
+                        <i class="fas fa-inbox" style="font-size: 3rem; margin-bottom: 1rem; opacity: 0.5;"></i>
+                        <p>لا توجد سجلات حضور بالمعايير المحددة</p>
+                    </div>
+                    <?php else: ?>
+                    <div style="text-align: center; padding: 1rem; border-top: 1px solid rgba(255,255,255,0.1); color: rgba(255,255,255,0.7);">
+                        <i class="fas fa-check"></i>
+                        عرض جميع السجلات المتاحة (<?= count($attendanceLogs) ?> سجل)
+                    </div>
+                    <?php endif; ?>
                 </div>
             </div>
         </main>
@@ -528,11 +607,77 @@ $stats = $attendanceModel->getStats($filters);
             window.location.href = '../api/export-attendance.php?' + params.toString();
         }
 
-        // Auto-refresh every 30 seconds
+        // Load more records functionality
+        let currentOffset = 5; // Start from 5 since we already loaded the first 5
+        let totalDisplayed = 5; // Track total displayed records
+        
+        function loadMoreRecords() {
+            const loadMoreBtn = document.getElementById('loadMoreBtn');
+            const loadingIndicator = document.getElementById('loadingIndicator');
+            const tableBody = document.getElementById('attendanceTableBody');
+            const recordsCount = document.getElementById('recordsCount');
+            
+            // Show loading state
+            loadMoreBtn.style.display = 'none';
+            loadingIndicator.style.display = 'block';
+            
+            // Get current filters from URL
+            const urlParams = new URLSearchParams(window.location.search);
+            urlParams.set('offset', currentOffset);
+            urlParams.set('ajax', 'load_more');
+            
+            fetch('attendance.php?' + urlParams.toString())
+                .then(response => response.json())
+                .then(data => {
+                    if (data.html) {
+                        // Append new rows to table
+                        tableBody.insertAdjacentHTML('beforeend', data.html);
+                        
+                        // Count the new rows added
+                        const tempDiv = document.createElement('div');
+                        tempDiv.innerHTML = data.html;
+                        const newRowsCount = tempDiv.querySelectorAll('tr').length;
+                        
+                        currentOffset += 5; // Increment offset for next load
+                        totalDisplayed += newRowsCount; // Update total displayed
+                        
+                        // Update records count
+                        recordsCount.textContent = `عرض ${totalDisplayed} من السجلات`;
+                        
+                        // Show load more button only if there are more records
+                        if (data.hasMore) {
+                            loadMoreBtn.style.display = 'inline-block';
+                        } else {
+                            // Show "no more records" message
+                            loadMoreBtn.innerHTML = '<i class="fas fa-check"></i> تم عرض جميع السجلات';
+                            loadMoreBtn.disabled = true;
+                            loadMoreBtn.style.display = 'inline-block';
+                            recordsCount.textContent = `عرض جميع السجلات (${totalDisplayed} سجل)`;
+                        }
+                    }
+                    
+                    loadingIndicator.style.display = 'none';
+                })
+                .catch(error => {
+                    console.error('Error loading more records:', error);
+                    alert('حدث خطأ في تحميل السجلات الإضافية');
+                    loadMoreBtn.style.display = 'inline-block';
+                    loadingIndicator.style.display = 'none';
+                });
+        }
+
+        // Reset offset when filters change
+        function resetPagination() {
+            currentOffset = 5;
+            totalDisplayed = 5;
+        }
+
+        // Auto-refresh every 30 seconds (but reset pagination)
         setInterval(function() {
             // Only refresh if no filters are applied
             const urlParams = new URLSearchParams(window.location.search);
             if (urlParams.toString() === '') {
+                resetPagination();
                 location.reload();
             }
         }, 30000);

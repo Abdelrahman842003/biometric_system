@@ -48,7 +48,56 @@ $filters = [
 
 $stats = $attendanceModel->getStats($filters);
 $dailyStats = $attendanceModel->getDailyStats($dateTo);
-$recentLogs = $attendanceModel->getAll(array_merge($filters, ['limit' => 100]));
+
+// Handle AJAX requests for loading more recent logs
+if (isset($_GET['ajax']) && $_GET['ajax'] === 'load_more_recent') {
+    header('Content-Type: application/json');
+    
+    $recentFilters = [
+        'offset' => $_GET['offset'] ?? 0,
+        'limit' => 5  // Load 5 more records
+    ];
+    
+    $logs = $attendanceModel->getAll($recentFilters);
+    $hasMore = count($logs) === 5; // If we got 5, there might be more
+    
+    ob_start();
+    foreach ($logs as $log): ?>
+        <tr>
+            <td><?= date('Y-m-d H:i:s', strtotime($log['log_time'])) ?></td>
+            <td><?= htmlspecialchars($log['user_name'] ?? $log['user_id']) ?></td>
+            <td><?= htmlspecialchars($log['machine_name'] ?? 'غير محدد') ?></td>
+            <td>
+                <span class="status <?= $log['log_type'] == 'check_in' ? 'online' : 'pending' ?>">
+                    <?= $log['log_type'] == 'check_in' ? 'دخول' : 'خروج' ?>
+                </span>
+            </td>
+            <td>
+                <?php
+                $verify_icons = [
+                    'fingerprint' => ['icon' => 'fas fa-fingerprint', 'text' => 'بصمة', 'color' => '#3498db'],
+                    'face' => ['icon' => 'fas fa-user-circle', 'text' => 'وجه', 'color' => '#e74c3c'],
+                    'password' => ['icon' => 'fas fa-key', 'text' => 'يدوي', 'color' => '#9b59b6'],
+                    'fingerprint_face' => ['icon' => 'fas fa-fingerprint', 'text' => 'بصمة+وجه', 'color' => '#1abc9c']
+                ];
+                $verify_info = $verify_icons[$log['verify_type']] ?? ['icon' => 'fas fa-question', 'text' => $log['verify_type'], 'color' => '#95a5a6'];
+                ?>
+                <span style="color: <?= $verify_info['color'] ?>; display: flex; align-items: center; gap: 0.5rem;">
+                    <i class="<?= $verify_info['icon'] ?>"></i>
+                    <?= $verify_info['text'] ?>
+                </span>
+            </td>
+            <td><?= $log['temperature'] ? $log['temperature'] . '°C' : '-' ?></td>
+        </tr>
+    <?php endforeach;
+    
+    $html = ob_get_clean();
+    echo json_encode(['html' => $html, 'hasMore' => $hasMore]);
+    exit;
+}
+
+// Get recent logs (first 5 records)
+$recentLogs = $attendanceModel->getAll(['limit' => 5, 'offset' => 0]);
 ?>
 
 <!DOCTYPE html>
@@ -344,7 +393,7 @@ $recentLogs = $attendanceModel->getAll(array_merge($filters, ['limit' => 100]));
             <!-- Recent Logs Table -->
             <div class="card">
                 <div class="card-header">
-                    <h3 class="card-title">السجلات الحديثة (آخر 100 سجل)</h3>
+                    <h3 class="card-title">السجلات الحديثة</h3>
                 </div>
                 <div class="table-responsive">
                     <table class="table">
@@ -358,7 +407,7 @@ $recentLogs = $attendanceModel->getAll(array_merge($filters, ['limit' => 100]));
                                 <th>درجة الحرارة</th>
                             </tr>
                         </thead>
-                        <tbody>
+                        <tbody id="recentLogsTableBody">
                             <?php foreach ($recentLogs as $log): ?>
                                 <tr>
                                     <td><?= date('Y-m-d H:i:s', strtotime($log['log_time'])) ?></td>
@@ -369,12 +418,53 @@ $recentLogs = $attendanceModel->getAll(array_merge($filters, ['limit' => 100]));
                                             <?= $log['log_type'] == 'check_in' ? 'دخول' : 'خروج' ?>
                                         </span>
                                     </td>
-                                    <td><?= $log['verify_type'] == 'fingerprint' ? 'بصمة' : ($log['verify_type'] == 'face' ? 'وجه' : $log['verify_type']) ?></td>
+                                    <td>
+                                        <?php
+                                        $verify_icons = [
+                                            'fingerprint' => ['icon' => 'fas fa-fingerprint', 'text' => 'بصمة', 'color' => '#3498db'],
+                                            'face' => ['icon' => 'fas fa-user-circle', 'text' => 'وجه', 'color' => '#e74c3c'],
+                                            'password' => ['icon' => 'fas fa-key', 'text' => 'يدوي', 'color' => '#9b59b6'],
+                                            'fingerprint_face' => ['icon' => 'fas fa-fingerprint', 'text' => 'بصمة+وجه', 'color' => '#1abc9c']
+                                        ];
+                                        $verify_info = $verify_icons[$log['verify_type']] ?? ['icon' => 'fas fa-question', 'text' => $log['verify_type'], 'color' => '#95a5a6'];
+                                        ?>
+                                        <span style="color: <?= $verify_info['color'] ?>; display: flex; align-items: center; gap: 0.5rem;">
+                                            <i class="<?= $verify_info['icon'] ?>"></i>
+                                            <?= $verify_info['text'] ?>
+                                        </span>
+                                    </td>
                                     <td><?= $log['temperature'] ? $log['temperature'] . '°C' : '-' ?></td>
                                 </tr>
                             <?php endforeach; ?>
                         </tbody>
                     </table>
+                    
+                    <!-- Load More Button for Recent Logs -->
+                    <?php if (count($recentLogs) === 5): ?>
+                    <div style="text-align: center; padding: 1rem; border-top: 1px solid rgba(255,255,255,0.1);">
+                        <div style="margin-bottom: 0.5rem; color: rgba(255,255,255,0.7); font-size: 0.9rem;">
+                            <span id="recentRecordsCount">عرض 5 من السجلات الحديثة</span>
+                        </div>
+                        <button class="btn btn-outline" id="loadMoreRecentBtn" onclick="loadMoreRecentRecords()">
+                            <i class="fas fa-plus"></i>
+                            عرض المزيد (5 سجلات إضافية)
+                        </button>
+                        <div id="recentLoadingIndicator" style="display: none; color: rgba(255,255,255,0.7);">
+                            <i class="fas fa-spinner fa-spin"></i>
+                            جاري التحميل...
+                        </div>
+                    </div>
+                    <?php elseif (count($recentLogs) === 0): ?>
+                    <div style="text-align: center; padding: 2rem; color: rgba(255,255,255,0.7);">
+                        <i class="fas fa-inbox" style="font-size: 3rem; margin-bottom: 1rem; opacity: 0.5;"></i>
+                        <p>لا توجد سجلات حضور حديثة</p>
+                    </div>
+                    <?php else: ?>
+                    <div style="text-align: center; padding: 1rem; border-top: 1px solid rgba(255,255,255,0.1); color: rgba(255,255,255,0.7);">
+                        <i class="fas fa-check"></i>
+                        عرض جميع السجلات الحديثة (<?= count($recentLogs) ?> سجل)
+                    </div>
+                    <?php endif; ?>
                 </div>
             </div>
         </main>
@@ -385,8 +475,69 @@ $recentLogs = $attendanceModel->getAll(array_merge($filters, ['limit' => 100]));
             window.print();
         }
 
-        // Auto-refresh every 2 minutes
+        // Load more recent records functionality
+        let currentRecentOffset = 5; // Start from 5 since we already loaded the first 5
+        let totalRecentDisplayed = 5; // Track total displayed records
+        
+        function loadMoreRecentRecords() {
+            const loadMoreBtn = document.getElementById('loadMoreRecentBtn');
+            const loadingIndicator = document.getElementById('recentLoadingIndicator');
+            const tableBody = document.getElementById('recentLogsTableBody');
+            const recordsCount = document.getElementById('recentRecordsCount');
+            
+            // Show loading state
+            loadMoreBtn.style.display = 'none';
+            loadingIndicator.style.display = 'block';
+            
+            // Create URL for AJAX request
+            const url = new URL(window.location.href);
+            url.searchParams.set('offset', currentRecentOffset);
+            url.searchParams.set('ajax', 'load_more_recent');
+            
+            fetch(url.toString())
+                .then(response => response.json())
+                .then(data => {
+                    if (data.html) {
+                        // Append new rows to table
+                        tableBody.insertAdjacentHTML('beforeend', data.html);
+                        
+                        // Count the new rows added
+                        const tempDiv = document.createElement('div');
+                        tempDiv.innerHTML = data.html;
+                        const newRowsCount = tempDiv.querySelectorAll('tr').length;
+                        
+                        currentRecentOffset += 5; // Increment offset for next load
+                        totalRecentDisplayed += newRowsCount; // Update total displayed
+                        
+                        // Update records count
+                        recordsCount.textContent = `عرض ${totalRecentDisplayed} من السجلات الحديثة`;
+                        
+                        // Show load more button only if there are more records
+                        if (data.hasMore) {
+                            loadMoreBtn.style.display = 'inline-block';
+                        } else {
+                            // Show "no more records" message
+                            loadMoreBtn.innerHTML = '<i class="fas fa-check"></i> تم عرض جميع السجلات';
+                            loadMoreBtn.disabled = true;
+                            loadMoreBtn.style.display = 'inline-block';
+                            recordsCount.textContent = `عرض جميع السجلات الحديثة (${totalRecentDisplayed} سجل)`;
+                        }
+                    }
+                    
+                    loadingIndicator.style.display = 'none';
+                })
+                .catch(error => {
+                    console.error('Error loading more recent records:', error);
+                    alert('حدث خطأ في تحميل السجلات الإضافية');
+                    loadMoreBtn.style.display = 'inline-block';
+                    loadingIndicator.style.display = 'none';
+                });
+        }
+
+        // Auto-refresh every 2 minutes (and reset pagination)
         setInterval(() => {
+            currentRecentOffset = 5;
+            totalRecentDisplayed = 5;
             location.reload();
         }, 120000);
     </script>
