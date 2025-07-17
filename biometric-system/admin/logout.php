@@ -1,19 +1,5 @@
 <?php
-// Start session
-session_start();
-
-// Clear all session variables
-$_SESSION = array();
-
-// Destroy the session cookie
-if (isset($_COOKIE[session_name()])) {
-    setcookie(session_name(), '', time()-3600, '/');
-}
-
-// Destroy the session
-session_destroy();
-
-// Redirect to login page or main page
-header('Location: ../index.php');
+require_once __DIR__ . "/../auth.php";
+Auth::logout();
+header("Location: /login.php?logout=1");
 exit;
-?>

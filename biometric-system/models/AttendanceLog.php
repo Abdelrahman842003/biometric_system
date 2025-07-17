@@ -13,16 +13,26 @@ class AttendanceLog {
                 VALUES (:machine_id, :user_id, :log_time, :log_type, :verify_type, :temperature, :mask_status, :raw_data)";
         
         $stmt = $this->db->prepare($sql);
-        return $stmt->execute([
+        $result = $stmt->execute([
             ':machine_id' => $data['machine_id'],
             ':user_id' => $data['user_id'],
             ':log_time' => $data['log_time'],
             ':log_type' => $data['log_type'] ?? 'check_in',
-            ':verify_type' => $data['verify_type'] ?? 'fingerprint',
+            ':verify_type' => $data['verify_type'] ?? 'password', // افتراضي للإدخال اليدوي
             ':temperature' => $data['temperature'] ?? null,
             ':mask_status' => $data['mask_status'] ?? null,
             ':raw_data' => $data['raw_data'] ?? null
         ]);
+        
+        if (!$result) {
+            error_log("SQL Error: " . print_r($stmt->errorInfo(), true));
+        }
+        
+        return $result;
+    }
+    
+    public function getLastError() {
+        return $this->db->errorInfo()[2] ?? 'خطأ غير محدد';
     }
     
     public function getAll($filters = []) {

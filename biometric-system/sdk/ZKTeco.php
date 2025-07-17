@@ -224,6 +224,41 @@ class ZKTeco {
         return $this->sendCommand($command) !== false;
     }
     
+    public function getUsers() {
+        if (!$this->connected) return false;
+        
+        $command = $this->createCommand(self::CMD_USER_WRQ);
+        $response = $this->sendCommand($command);
+        
+        if (!$response) return false;
+        
+        $users = [];
+        $offset = 0;
+        $recordSize = 72; // Each user record is typically 72 bytes
+        
+        while ($offset + $recordSize <= strlen($response)) {
+            $record = substr($response, $offset, $recordSize);
+            $user = $this->parseUserRecord($record);
+            if ($user) {
+                $users[] = $user;
+            }
+            $offset += $recordSize;
+        }
+        
+        return $users;
+    }
+    
+    public function getUserTemplates($userId) {
+        if (!$this->connected) return false;
+        
+        $command = $this->createCommand(self::CMD_USERTEMP_RRQ, pack('v', $userId));
+        $response = $this->sendCommand($command);
+        
+        if (!$response) return false;
+        
+        return $this->parseTemplateData($response);
+    }
+    
     private function createCommand($commandId, $data = '') {
         $sessionId = $this->sessionId ?? 0;
         $replyId = 0;
@@ -286,12 +321,14 @@ class ZKTeco {
     private function parseAttendanceRecord($record) {
         if (strlen($record) < 16) return false;
         
-        $data = unpack('vuserId/Vdatetime/Ctype/x3', $record);
+        // Enhanced parsing to include verification type
+        $data = unpack('vuserId/Vdatetime/Ctype/Cverify/x2', $record);
         
         return [
             'user_id' => $data['userId'],
             'datetime' => date('Y-m-d H:i:s', $data['datetime']),
-            'type' => $this->getLogType($data['type'])
+            'type' => $this->getLogType($data['type']),
+            'verify_type' => $this->getVerifyType($data['verify'] ?? 1)
         ];
     }
     
@@ -305,6 +342,62 @@ class ZKTeco {
             case 5: return 'overtime_out';
             default: return 'unknown';
         }
+    }
+    
+    private function getVerifyType($verify) {
+        switch ($verify) {
+            case 1: return 'fingerprint';
+            case 2: return 'password';
+            case 3: return 'password'; // Card treated as manual for simplicity
+            case 4: return 'face';
+            case 5: return 'fingerprint_face'; // Dual biometric
+            default: return 'fingerprint';
+        }
+    }
+    
+    private function parseUserRecord($record) {
+        if (strlen($record) < 72) return false;
+        
+        // Parse user record - this is a simplified version
+        $data = unpack('vuserId/a24name/a8password/Ccard/x35', $record);
+        
+        return [
+            'user_id' => $data['userId'],
+            'name' => trim($data['name']),
+            'password' => trim($data['password']),
+            'card_number' => $data['card']
+        ];
+    }
+    
+    private function parseTemplateData($data) {
+        $templates = [
+            'fingerprint' => [],
+            'face' => []
+        ];
+        
+        $offset = 0;
+        while ($offset < strlen($data)) {
+            if ($offset + 4 > strlen($data)) break;
+            
+            $header = unpack('vsize/Ctype/Cfinger', substr($data, $offset, 4));
+            $templateSize = $header['size'];
+            $templateType = $header['type'];
+            $fingerIndex = $header['finger'];
+            
+            if ($offset + 4 + $templateSize > strlen($data)) break;
+            
+            $templateData = substr($data, $offset + 4, $templateSize);
+            
+            if ($templateType == 1) { // Fingerprint template
+                $templates['fingerprint'][$fingerIndex] = base64_encode($templateData);
+            } elseif ($templateType == 2) { // Face template
+                $templates['face'][] = base64_encode($templateData);
+            }
+            
+            $offset += 4 + $templateSize;
+        }
+        
+        return $templates;
     }
     
     public function __destruct() {

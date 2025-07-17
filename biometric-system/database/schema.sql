@@ -70,7 +70,7 @@ CREATE TABLE attendance_logs (
     user_id VARCHAR(20) NOT NULL,
     log_time TIMESTAMP NOT NULL,
     log_type ENUM('check_in', 'check_out', 'break_in', 'break_out') DEFAULT 'check_in',
-    verify_type ENUM('fingerprint', 'face', 'card', 'password') DEFAULT 'fingerprint',
+    verify_type ENUM('fingerprint', 'face', 'password', 'fingerprint_face') DEFAULT 'fingerprint',
     temperature DECIMAL(4,1) NULL,
     mask_status TINYINT(1) NULL,
     raw_data TEXT,
@@ -122,3 +122,9 @@ VALUES ('admin', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi',
 -- Insert Sample Machine
 INSERT INTO machines (name, location, ip_address, serial_number, adms_key) 
 VALUES ('Main Entrance', 'Building A - Ground Floor', '192.168.1.100', 'ZK001234567890', 'sample-adms-key-123');
+
+-- Insert Sample Users
+INSERT INTO users (user_id, name, department, position, is_active) VALUES 
+('001', 'أحمد محمد', 'تقنية المعلومات', 'مطور برمجيات', 1),
+('002', 'فاطمة أحمد', 'الموارد البشرية', 'محاسب', 1),
+('003', 'محمد علي', 'المبيعات', 'مدير مبيعات', 1);

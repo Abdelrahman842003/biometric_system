@@ -5,7 +5,7 @@ require_once __DIR__ . '/../models/Machine.php';
 
 if (!isset($_GET['id'])) {
     http_response_code(400);
-    echo json_encode(['error' => 'Machine ID is required']);
+    echo json_encode(['success' => false, 'message' => 'Machine ID is required']);
     exit;
 }
 
@@ -15,19 +15,19 @@ try {
     
     if (!$machine) {
         http_response_code(404);
-        echo json_encode(['error' => 'Machine not found']);
+        echo json_encode(['success' => false, 'message' => 'Machine not found']);
         exit;
     }
     
     echo json_encode([
-        'status' => 'success',
-        'data' => $machine
+        'success' => true,
+        'machine' => $machine
     ]);
     
 } catch (Exception $e) {
     http_response_code(500);
     echo json_encode([
-        'status' => 'error',
+        'success' => false,
         'message' => 'Internal server error'
     ]);
 }

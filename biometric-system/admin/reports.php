@@ -1,4 +1,7 @@
 <?php
+require_once __DIR__ . '/../auth.php';
+Auth::requireLogin();
+
 require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../models/AttendanceLog.php';
 require_once __DIR__ . '/../models/Machine.php';
@@ -118,14 +121,6 @@ $recentLogs = $attendanceModel->getAll(array_merge($filters, ['limit' => 100]));
                         <i class="fas fa-clock"></i>
                     </div>
                     <span class="nav-text">سجل الحضور</span>
-                </a>
-            </li>
-            <li class="nav-item">
-                <a href="commands.php" class="nav-link">
-                    <div class="nav-icon">
-                        <i class="fas fa-terminal"></i>
-                    </div>
-                    <span class="nav-text">الأوامر</span>
                 </a>
             </li>
             <li class="nav-item">

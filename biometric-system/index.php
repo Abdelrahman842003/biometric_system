@@ -1,3 +1,16 @@
+<?php
+require_once __DIR__ . '/auth.php';
+
+// If admin is logged in, redirect to dashboard
+if (Auth::isLoggedIn()) {
+    header('Location: admin/dashboard.php');
+    exit;
+}
+
+// If not logged in, redirect to login page
+header('Location: login.php');
+exit;
+?>
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>

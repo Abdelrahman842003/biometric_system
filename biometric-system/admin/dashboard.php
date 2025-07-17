@@ -1,3 +1,7 @@
+<?php
+require_once __DIR__ . '/../auth.php';
+Auth::requireLogin();
+?>
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
@@ -20,6 +24,18 @@
             <i class="fas fa-fingerprint"></i>
             نظام البايومترك
         </a>
+        
+        <div style="display: flex; align-items: center; gap: 1rem;">
+            <span style="color: rgba(255,255,255,0.8); font-size: 0.9rem;">
+                <i class="fas fa-user-shield"></i>
+                مرحباً <?= Auth::getAdminName() ?>
+            </span>
+            <a href="logout.php" class="btn btn-outline" style="padding: 0.5rem 1rem; font-size: 0.9rem;" 
+               onclick="return confirm('هل تريد تسجيل الخروج؟')">
+                <i class="fas fa-sign-out-alt"></i>
+                خروج
+            </a>
+        </div>
         
         <button class="navbar-toggle" id="menuToggle" onclick="toggleNavbar()">
             <div class="hamburger">
@@ -68,14 +84,6 @@
                         <i class="fas fa-clock"></i>
                     </div>
                     <span class="nav-text">سجل الحضور</span>
-                </a>
-            </li>
-            <li class="nav-item">
-                <a href="commands.php" class="nav-link">
-                    <div class="nav-icon">
-                        <i class="fas fa-terminal"></i>
-                    </div>
-                    <span class="nav-text">الأوامر</span>
                 </a>
             </li>
             <li class="nav-item">
@@ -167,19 +175,6 @@
                     </div>
                     <small style="color: rgba(255, 255, 255, 0.7);">سجلات حضور اليوم</small>
                 </div>
-
-                <div class="card">
-                    <div class="card-header">
-                        <h3 class="card-title">
-                            <i class="fas fa-exclamation-triangle"></i>
-                            أوامر معلقة
-                        </h3>
-                    </div>
-                    <div style="font-size: 2.5rem; font-weight: bold; color: var(--danger);" id="pending-commands">
-                        <div class="loading"></div>
-                    </div>
-                    <small style="color: rgba(255, 255, 255, 0.7);">الأوامر في الانتظار</small>
-                </div>
             </div>
 
             <!-- Recent Activity -->
@@ -259,7 +254,6 @@
                         document.getElementById('total-machines').textContent = data.stats.total_machines || 0;
                         document.getElementById('total-users').textContent = data.stats.total_users || 0;
                         document.getElementById('today-attendance').textContent = data.stats.today_attendance || 0;
-                        document.getElementById('pending-commands').textContent = data.stats.pending_commands || 0;
                     }
                 })
                 .catch(error => {
@@ -267,7 +261,6 @@
                     document.getElementById('total-machines').textContent = '0';
                     document.getElementById('total-users').textContent = '0';
                     document.getElementById('today-attendance').textContent = '0';
-                    document.getElementById('pending-commands').textContent = '0';
                 });
         }
 

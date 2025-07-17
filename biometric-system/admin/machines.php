@@ -1,10 +1,11 @@
 <?php
+require_once __DIR__ . '/../auth.php';
+Auth::requireLogin();
+
 require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../models/Machine.php';
-require_once __DIR__ . '/../models/Command.php';
 
 $machineModel = new Machine();
-$commandModel = new Command();
 
 // Handle AJAX requests
 if (isset($_SERVER['REQUEST_METHOD']) && $_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -14,41 +15,69 @@ if (isset($_SERVER['REQUEST_METHOD']) && $_SERVER['REQUEST_METHOD'] === 'POST') 
     
     switch ($action) {
         case 'add_machine':
-            $data = [
-                'name' => $_POST['name'],
-                'location' => $_POST['location'],
-                'ip_address' => $_POST['ip_address'],
-                'serial_number' => $_POST['serial_number'],
-                'port' => $_POST['port'] ?: 4370,
-                'adms_enabled' => isset($_POST['adms_enabled']) ? 1 : 0,
-                'adms_key' => $_POST['adms_key'],
-                'status' => $_POST['status']
-            ];
-            
-            if ($machineModel->create($data)) {
-                echo json_encode(['success' => true, 'message' => 'تم إضافة الجهاز بنجاح']);
-            } else {
-                echo json_encode(['success' => false, 'message' => 'فشل في إضافة الجهاز']);
+            try {
+                // Validate required fields
+                if (empty($_POST['name']) || empty($_POST['ip_address'])) {
+                    echo json_encode(['success' => false, 'message' => 'اسم الجهاز وعنوان IP مطلوبان']);
+                    exit;
+                }
+                
+                $data = [
+                    'name' => trim($_POST['name']),
+                    'location' => trim($_POST['location'] ?: ''),
+                    'ip_address' => trim($_POST['ip_address']),
+                    'serial_number' => trim($_POST['serial_number'] ?: ''),
+                    'port' => (int)($_POST['port'] ?: 4370),
+                    'adms_enabled' => isset($_POST['adms_enabled']) ? 1 : 0,
+                    'adms_key' => trim($_POST['adms_key'] ?: ''),
+                    'status' => $_POST['status'] ?: 'active'
+                ];
+                
+                if ($machineModel->create($data)) {
+                    echo json_encode(['success' => true, 'message' => 'تم إضافة الجهاز بنجاح']);
+                } else {
+                    echo json_encode(['success' => false, 'message' => 'فشل في إضافة الجهاز']);
+                }
+            } catch (Exception $e) {
+                error_log("Add machine error: " . $e->getMessage());
+                echo json_encode(['success' => false, 'message' => 'حدث خطأ في إضافة الجهاز']);
             }
             exit;
             
         case 'edit_machine':
-            $id = $_POST['id'];
-            $data = [
-                'name' => $_POST['name'],
-                'location' => $_POST['location'],
-                'ip_address' => $_POST['ip_address'],
-                'serial_number' => $_POST['serial_number'],
-                'port' => $_POST['port'],
-                'adms_enabled' => isset($_POST['adms_enabled']) ? 1 : 0,
-                'adms_key' => $_POST['adms_key'],
-                'status' => $_POST['status']
-            ];
-            
-            if ($machineModel->update($id, $data)) {
-                echo json_encode(['success' => true, 'message' => 'تم تحديث الجهاز بنجاح']);
-            } else {
-                echo json_encode(['success' => false, 'message' => 'فشل في تحديث الجهاز']);
+            try {
+                $id = $_POST['id'];
+                
+                // Validate required fields
+                if (empty($id)) {
+                    echo json_encode(['success' => false, 'message' => 'معرف الجهاز مطلوب']);
+                    exit;
+                }
+                
+                if (empty($_POST['name']) || empty($_POST['ip_address'])) {
+                    echo json_encode(['success' => false, 'message' => 'اسم الجهاز وعنوان IP مطلوبان']);
+                    exit;
+                }
+                
+                $data = [
+                    'name' => trim($_POST['name']),
+                    'location' => trim($_POST['location'] ?: ''),
+                    'ip_address' => trim($_POST['ip_address']),
+                    'serial_number' => trim($_POST['serial_number'] ?: ''),
+                    'port' => (int)($_POST['port'] ?: 4370),
+                    'adms_enabled' => isset($_POST['adms_enabled']) ? 1 : 0,
+                    'adms_key' => trim($_POST['adms_key'] ?: ''),
+                    'status' => $_POST['status'] ?: 'active'
+                ];
+                
+                if ($machineModel->update($id, $data)) {
+                    echo json_encode(['success' => true, 'message' => 'تم تحديث الجهاز بنجاح']);
+                } else {
+                    echo json_encode(['success' => false, 'message' => 'فشل في تحديث الجهاز']);
+                }
+            } catch (Exception $e) {
+                error_log("Edit machine error: " . $e->getMessage());
+                echo json_encode(['success' => false, 'message' => 'حدث خطأ في تحديث الجهاز']);
             }
             exit;
             
@@ -69,24 +98,6 @@ if (isset($_SERVER['REQUEST_METHOD']) && $_SERVER['REQUEST_METHOD'] === 'POST') 
                 echo json_encode($result);
             } else {
                 echo json_encode(['success' => false, 'message' => 'الجهاز غير موجود']);
-            }
-            exit;
-            
-        case 'reboot_machine':
-            $id = $_POST['id'];
-            if ($commandModel->createRebootCommand($id)) {
-                echo json_encode(['success' => true, 'message' => 'تم إرسال أمر إعادة التشغيل']);
-            } else {
-                echo json_encode(['success' => false, 'message' => 'فشل في إرسال الأمر']);
-            }
-            exit;
-            
-        case 'sync_time':
-            $id = $_POST['id'];
-            if ($commandModel->createSyncTimeCommand($id)) {
-                echo json_encode(['success' => true, 'message' => 'تم إرسال أمر مزامنة الوقت']);
-            } else {
-                echo json_encode(['success' => false, 'message' => 'فشل في إرسال الأمر']);
             }
             exit;
     }
@@ -172,14 +183,6 @@ $machines = $machineModel->getAll();
                 </a>
             </li>
             <li class="nav-item">
-                <a href="commands.php" class="nav-link">
-                    <div class="nav-icon">
-                        <i class="fas fa-terminal"></i>
-                    </div>
-                    <span class="nav-text">الأوامر</span>
-                </a>
-            </li>
-            <li class="nav-item">
                 <a href="reports.php" class="nav-link">
                     <div class="nav-icon">
                         <i class="fas fa-chart-bar"></i>
@@ -217,10 +220,10 @@ $machines = $machineModel->getAll();
     <div class="dashboard-container">
         <!-- Main Content -->
         <main class="main-content">
-            <div class="page-header">
+            <div class="main-header">
                 <div>
                     <h1 class="page-title">إدارة الأجهزة</h1>
-                    <div class="breadcrumb">الرئيسية / إدارة الأجهزة</div>
+                    <p class="page-subtitle">إدارة وتحكم في أجهزة البايومترك</p>
                 </div>
                 <div>
                     <button class="btn btn-primary" onclick="showAddMachineModal()">
@@ -231,9 +234,9 @@ $machines = $machineModel->getAll();
             </div>
 
             <!-- Machines Table -->
-            <div class="content-section">
-                <div class="section-header">
-                    <h2 class="section-title">قائمة الأجهزة</h2>
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">قائمة الأجهزة</h3>
                     <div>
                         <button class="btn btn-outline" onclick="refreshMachines()">
                             <i class="fas fa-sync-alt"></i>
@@ -241,225 +244,126 @@ $machines = $machineModel->getAll();
                         </button>
                     </div>
                 </div>
-                <div class="section-content">
-                    <div class="table-container">
-                        <table class="table">
-                            <thead>
-                                <tr>
-                                    <th>ID</th>
-                                    <th>اسم الجهاز</th>
-                                    <th>الموقع</th>
-                                    <th>عنوان IP</th>
-                                    <th>المنفذ</th>
-                                    <th>الحالة</th>
-                                    <th>آخر تزامن</th>
-                                    <th>الإجراءات</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <?php foreach ($machines as $machine): ?>
-                                <tr>
-                                    <td><?= $machine['id'] ?></td>
-                                    <td><?= htmlspecialchars($machine['name']) ?></td>
-                                    <td><?= htmlspecialchars($machine['location']) ?></td>
-                                    <td><?= htmlspecialchars($machine['ip_address']) ?></td>
-                                    <td><?= $machine['port'] ?></td>
-                                    <td>
-                                        <span class="status-badge status-<?= $machine['status'] ?>">
-                                            <?= $machine['status'] === 'active' ? 'نشط' : ($machine['status'] === 'inactive' ? 'غير نشط' : 'صيانة') ?>
-                                        </span>
-                                    </td>
-                                    <td><?= $machine['last_sync'] ? date('Y-m-d H:i', strtotime($machine['last_sync'])) : 'لم يتم التزامن' ?></td>
-                                    <td>
-                                        <div style="display: flex; gap: 0.5rem;">
-                                            <button class="btn btn-primary" style="padding: 0.25rem 0.5rem; font-size: 0.8rem;" 
-                                                    onclick="testConnection(<?= $machine['id'] ?>)">
-                                                <i class="fas fa-network-wired"></i>
-                                            </button>
-                                            <button class="btn btn-warning" style="padding: 0.25rem 0.5rem; font-size: 0.8rem;" 
-                                                    onclick="rebootMachine(<?= $machine['id'] ?>)">
-                                                <i class="fas fa-redo"></i>
-                                            </button>
-                                            <button class="btn btn-success" style="padding: 0.25rem 0.5rem; font-size: 0.8rem;" 
-                                                    onclick="syncTime(<?= $machine['id'] ?>)">
-                                                <i class="fas fa-clock"></i>
-                                            </button>
-                                            <button class="btn btn-outline" style="padding: 0.25rem 0.5rem; font-size: 0.8rem;" 
-                                                    onclick="editMachine(<?= $machine['id'] ?>)">
-                                                <i class="fas fa-edit"></i>
-                                            </button>
-                                            <button class="btn btn-danger" style="padding: 0.25rem 0.5rem; font-size: 0.8rem;" 
-                                                    onclick="deleteMachine(<?= $machine['id'] ?>)">
-                                                <i class="fas fa-trash"></i>
-                                            </button>
-                                        </div>
-                                    </td>
-                                </tr>
-                                <?php endforeach; ?>
-                            </tbody>
-                        </table>
-                    </div>
+
+                <div class="table-responsive">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>اسم الجهاز</th>
+                                <th>الموقع</th>
+                                <th>عنوان IP</th>
+                                <th>المنفذ</th>
+                                <th>الحالة</th>
+                                <th>آخر تزامن</th>
+                                <th>الإجراءات</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php foreach ($machines as $machine): ?>
+                            <tr>
+                                <td><?= $machine['id'] ?></td>
+                                <td><?= htmlspecialchars($machine['name']) ?></td>
+                                <td><?= htmlspecialchars($machine['location']) ?></td>
+                                <td><?= htmlspecialchars($machine['ip_address']) ?></td>
+                                <td><?= $machine['port'] ?></td>
+                                <td>
+                                    <span class="status <?= $machine['status'] === 'active' ? 'online' : 'offline' ?>">
+                                        <?= $machine['status'] === 'active' ? 'نشط' : ($machine['status'] === 'inactive' ? 'غير نشط' : 'صيانة') ?>
+                                    </span>
+                                </td>
+                                <td><?= $machine['last_sync'] ? date('Y-m-d H:i', strtotime($machine['last_sync'])) : 'لم يتم التزامن' ?></td>
+                                <td>
+                                    <div class="d-flex gap-1">
+                                        <button class="btn btn-primary btn-sm" onclick="testConnection(<?= $machine['id'] ?>)" title="اختبار الاتصال">
+                                            <i class="fas fa-network-wired"></i>
+                                        </button>
+                                        <button class="btn btn-outline btn-sm" onclick="editMachine(<?= $machine['id'] ?>)" title="تعديل">
+                                            <i class="fas fa-edit"></i>
+                                        </button>
+                                        <button class="btn btn-danger btn-sm" onclick="deleteMachine(<?= $machine['id'] ?>)" title="حذف">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
                 </div>
             </div>
         </main>
     </div>
 
     <!-- Add/Edit Machine Modal -->
-    <div id="machineModal" class="modal" style="display: none;">
+    <div class="modal" id="machineModal">
         <div class="modal-content">
             <div class="modal-header">
-                <h3 id="modalTitle">إضافة جهاز جديد</h3>
-                <button class="modal-close" onclick="closeMachineModal()">&times;</button>
+                <h3 class="modal-title" id="modalTitle">إضافة جهاز جديد</h3>
+                <button class="close-btn" onclick="closeMachineModal()">&times;</button>
             </div>
             <form id="machineForm">
                 <input type="hidden" id="machineId" name="id">
+                
                 <div class="form-group">
-                    <label for="machineName">اسم الجهاز *</label>
-                    <input type="text" id="machineName" name="name" required>
+                    <label class="form-label" for="machineName">اسم الجهاز <span style="color: var(--danger)">*</span></label>
+                    <input type="text" class="form-control" id="machineName" name="name" required>
                 </div>
+                
                 <div class="form-group">
-                    <label for="machineLocation">الموقع</label>
-                    <input type="text" id="machineLocation" name="location">
+                    <label class="form-label" for="machineLocation">الموقع</label>
+                    <input type="text" class="form-control" id="machineLocation" name="location">
                 </div>
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="machineIp">عنوان IP *</label>
-                        <input type="text" id="machineIp" name="ip_address" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="machinePort">المنفذ</label>
-                        <input type="number" id="machinePort" name="port" value="4370">
-                    </div>
-                </div>
+                
                 <div class="form-group">
-                    <label for="machineSerial">الرقم التسلسلي</label>
-                    <input type="text" id="machineSerial" name="serial_number">
+                    <label class="form-label" for="machineIp">عنوان IP <span style="color: var(--danger)">*</span></label>
+                    <input type="text" class="form-control" id="machineIp" name="ip_address" required>
                 </div>
+                
                 <div class="form-group">
-                    <label for="machineAdmsKey">مفتاح ADMS</label>
-                    <input type="text" id="machineAdmsKey" name="adms_key">
+                    <label class="form-label" for="machinePort">المنفذ</label>
+                    <input type="number" class="form-control" id="machinePort" name="port" value="4370">
                 </div>
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="machineStatus">الحالة</label>
-                        <select id="machineStatus" name="status">
-                            <option value="active">نشط</option>
-                            <option value="inactive">غير نشط</option>
-                            <option value="maintenance">صيانة</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label>
-                            <input type="checkbox" id="machineAdmsEnabled" name="adms_enabled" checked>
-                            تفعيل ADMS
-                        </label>
-                    </div>
+                
+                <div class="form-group">
+                    <label class="form-label" for="machineSerial">الرقم التسلسلي</label>
+                    <input type="text" class="form-control" id="machineSerial" name="serial_number">
                 </div>
-                <div class="form-actions">
+                
+                <div class="form-group">
+                    <label class="form-label" for="machineAdmsKey">مفتاح ADMS</label>
+                    <input type="text" class="form-control" id="machineAdmsKey" name="adms_key">
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label" for="machineStatus">الحالة</label>
+                    <select class="form-control" id="machineStatus" name="status">
+                        <option value="active">نشط</option>
+                        <option value="inactive">غير نشط</option>
+                        <option value="maintenance">صيانة</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">
+                        <input type="checkbox" id="machineAdmsEnabled" name="adms_enabled" checked style="margin-left: 0.5rem;">
+                        تفعيل ADMS
+                    </label>
+                </div>
+                
+                <div class="d-flex gap-2 justify-content-between">
                     <button type="button" class="btn btn-outline" onclick="closeMachineModal()">إلغاء</button>
-                    <button type="submit" class="btn btn-primary">حفظ</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save"></i>
+                        حفظ
+                    </button>
                 </div>
             </form>
         </div>
     </div>
 
     <style>
-        /* Modal Styles */
-        .modal {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.8);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 2000;
-        }
-
-        .modal-content {
-            background: var(--dark);
-            border-radius: 12px;
-            width: 90%;
-            max-width: 600px;
-            max-height: 90vh;
-            overflow-y: auto;
-            border: 1px solid rgba(255, 255, 255, 0.1);
-        }
-
-        .modal-header {
-            padding: 1.5rem;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .modal-header h3 {
-            color: white;
-            margin: 0;
-        }
-
-        .modal-close {
-            background: none;
-            border: none;
-            color: white;
-            font-size: 1.5rem;
-            cursor: pointer;
-            padding: 0;
-            width: 30px;
-            height: 30px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .form-group {
-            margin-bottom: 1rem;
-        }
-
-        .form-row {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 1rem;
-        }
-
-        .form-group label {
-            display: block;
-            margin-bottom: 0.5rem;
-            color: white;
-            font-weight: 500;
-        }
-
-        .form-group input,
-        .form-group select {
-            width: 100%;
-            padding: 0.75rem;
-            border: 1px solid rgba(255, 255, 255, 0.3);
-            border-radius: 8px;
-            background: rgba(255, 255, 255, 0.05);
-            color: white;
-            font-family: inherit;
-        }
-
-        .form-group input:focus,
-        .form-group select:focus {
-            outline: none;
-            border-color: var(--primary);
-        }
-
-        .form-actions {
-            padding: 1.5rem;
-            border-top: 1px solid rgba(255, 255, 255, 0.1);
-            display: flex;
-            gap: 1rem;
-            justify-content: flex-end;
-        }
-
-        #machineForm {
-            padding: 1.5rem;
-        }
+        /* Additional styles for machines page if needed */
     </style>
 
     <script>
@@ -467,32 +371,43 @@ $machines = $machineModel->getAll();
             document.getElementById('modalTitle').textContent = 'إضافة جهاز جديد';
             document.getElementById('machineForm').reset();
             document.getElementById('machineId').value = '';
-            document.getElementById('machineModal').style.display = 'flex';
+            document.getElementById('machineModal').classList.add('show');
         }
 
         function closeMachineModal() {
-            document.getElementById('machineModal').style.display = 'none';
+            document.getElementById('machineModal').classList.remove('show');
         }
 
         function editMachine(id) {
             // Fetch machine data and populate form
             fetch('../api/get-machine.php?id=' + id)
-                .then(response => response.json())
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok');
+                    }
+                    return response.json();
+                })
                 .then(data => {
                     if (data.success) {
                         const machine = data.machine;
                         document.getElementById('modalTitle').textContent = 'تعديل الجهاز';
                         document.getElementById('machineId').value = machine.id;
-                        document.getElementById('machineName').value = machine.name;
-                        document.getElementById('machineLocation').value = machine.location;
-                        document.getElementById('machineIp').value = machine.ip_address;
-                        document.getElementById('machinePort').value = machine.port;
-                        document.getElementById('machineSerial').value = machine.serial_number;
-                        document.getElementById('machineAdmsKey').value = machine.adms_key;
-                        document.getElementById('machineStatus').value = machine.status;
+                        document.getElementById('machineName').value = machine.name || '';
+                        document.getElementById('machineLocation').value = machine.location || '';
+                        document.getElementById('machineIp').value = machine.ip_address || '';
+                        document.getElementById('machinePort').value = machine.port || '4370';
+                        document.getElementById('machineSerial').value = machine.serial_number || '';
+                        document.getElementById('machineAdmsKey').value = machine.adms_key || '';
+                        document.getElementById('machineStatus').value = machine.status || 'active';
                         document.getElementById('machineAdmsEnabled').checked = machine.adms_enabled == 1;
-                        document.getElementById('machineModal').style.display = 'flex';
+                        document.getElementById('machineModal').classList.add('show');
+                    } else {
+                        alert(data.message || 'فشل في تحميل بيانات الجهاز');
                     }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('حدث خطأ في تحميل بيانات الجهاز');
                 });
         }
 
@@ -531,38 +446,6 @@ $machines = $machineModel->getAll();
             });
         }
 
-        function rebootMachine(id) {
-            if (confirm('هل تريد إعادة تشغيل هذا الجهاز؟')) {
-                const formData = new FormData();
-                formData.append('action', 'reboot_machine');
-                formData.append('id', id);
-
-                fetch('machines.php', {
-                    method: 'POST',
-                    body: formData
-                })
-                .then(response => response.json())
-                .then(data => {
-                    alert(data.message);
-                });
-            }
-        }
-
-        function syncTime(id) {
-            const formData = new FormData();
-            formData.append('action', 'sync_time');
-            formData.append('id', id);
-
-            fetch('machines.php', {
-                method: 'POST',
-                body: formData
-            })
-            .then(response => response.json())
-            .then(data => {
-                alert(data.message);
-            });
-        }
-
         function refreshMachines() {
             location.reload();
         }
@@ -571,22 +454,64 @@ $machines = $machineModel->getAll();
         document.getElementById('machineForm').addEventListener('submit', function(e) {
             e.preventDefault();
             
+            // Basic validation
+            const name = document.getElementById('machineName').value.trim();
+            const ip = document.getElementById('machineIp').value.trim();
+            
+            if (!name) {
+                alert('اسم الجهاز مطلوب');
+                return;
+            }
+            
+            if (!ip) {
+                alert('عنوان IP مطلوب');
+                return;
+            }
+            
+            // IP validation
+            const ipRegex = /^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$/;
+            if (!ipRegex.test(ip)) {
+                alert('عنوان IP غير صحيح');
+                return;
+            }
+            
             const formData = new FormData(this);
             const isEdit = document.getElementById('machineId').value !== '';
             formData.append('action', isEdit ? 'edit_machine' : 'add_machine');
+            
+            // Ensure checkbox value is sent correctly
+            if (!document.getElementById('machineAdmsEnabled').checked) {
+                formData.delete('adms_enabled');
+            }
 
             fetch('machines.php', {
                 method: 'POST',
                 body: formData
             })
-            .then(response => response.json())
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                return response.json();
+            })
             .then(data => {
                 alert(data.message);
                 if (data.success) {
                     closeMachineModal();
                     location.reload();
                 }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('حدث خطأ في العملية: ' + error.message);
             });
+        });
+
+        // Close modal when clicking outside
+        window.addEventListener('click', function(e) {
+            if (e.target.classList.contains('modal')) {
+                e.target.classList.remove('show');
+            }
         });
     </script>
 

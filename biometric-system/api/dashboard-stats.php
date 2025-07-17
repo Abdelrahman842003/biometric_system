@@ -4,13 +4,11 @@ require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../models/Machine.php';
 require_once __DIR__ . '/../models/User.php';
 require_once __DIR__ . '/../models/AttendanceLog.php';
-require_once __DIR__ . '/../models/Command.php';
 
 try {
     $machineModel = new Machine();
     $userModel = new User();
     $attendanceModel = new AttendanceLog();
-    $commandModel = new Command();
     
     // Get today's date
     $today = date('Y-m-d');
@@ -27,16 +25,12 @@ try {
     $todayAttendance = $attendanceModel->getAll(['date_from' => $today, 'date_to' => $today]);
     $todayAttendanceCount = count($todayAttendance);
     
-    $pendingCommands = $commandModel->getAll(['status' => 'pending']);
-    $pendingCommandsCount = count($pendingCommands);
-    
     $stats = [
         'total_machines' => $totalMachines,
         'active_machines' => $activeMachines,
         'total_users' => $totalUsers,
         'active_users' => $activeUsers,
-        'today_attendance' => $todayAttendanceCount,
-        'pending_commands' => $pendingCommandsCount
+        'today_attendance' => $todayAttendanceCount
     ];
     
     echo json_encode([

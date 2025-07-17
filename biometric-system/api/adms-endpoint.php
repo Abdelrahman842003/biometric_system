@@ -127,18 +127,26 @@ function handleAttendanceLog($data, $machineModel, $attendanceModel) {
         $logType = ($data['punch_state'] == 0) ? 'check_in' : 'check_out';
     }
     
-    // Determine verify type
+    // Determine verify type with basic 4 types only
     $verifyType = 'fingerprint';
     if (isset($data['verify_type'])) {
         $verifyType = $data['verify_type'];
     } elseif (isset($data['verify_mode'])) {
+        // Basic mapping for 4 verification modes only
         switch ($data['verify_mode']) {
             case 1: $verifyType = 'fingerprint'; break;
-            case 2: $verifyType = 'face'; break;
-            case 3: $verifyType = 'card'; break;
-            case 4: $verifyType = 'password'; break;
+            case 2: $verifyType = 'password'; break;
+            case 3: $verifyType = 'password'; break; // Card as manual
+            case 4: $verifyType = 'face'; break;
+            case 5: $verifyType = 'fingerprint_face'; break; // Dual biometric
             default: $verifyType = 'fingerprint';
         }
+    } elseif (isset($data['verification_method'])) {
+        // Direct mapping from device
+        $allowedTypes = ['fingerprint', 'face', 'password', 'fingerprint_face'];
+        $verifyType = in_array($data['verification_method'], $allowedTypes) 
+                     ? $data['verification_method'] 
+                     : 'fingerprint';
     }
     
     // Create attendance log

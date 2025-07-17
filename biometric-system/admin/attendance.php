@@ -1,4 +1,7 @@
 <?php
+require_once __DIR__ . '/../auth.php';
+Auth::requireLogin();
+
 require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../models/AttendanceLog.php';
 require_once __DIR__ . '/../models/Machine.php';
@@ -7,6 +10,78 @@ require_once __DIR__ . '/../models/User.php';
 $attendanceModel = new AttendanceLog();
 $machineModel = new Machine();
 $userModel = new User();
+
+// Handle AJAX requests for manual attendance
+if (isset($_SERVER['REQUEST_METHOD']) && $_SERVER['REQUEST_METHOD'] === 'POST') {
+    header('Content-Type: application/json');
+    
+    // Log all POST data for debugging
+    error_log("POST request received: " . print_r($_POST, true));
+    
+    $action = $_POST['action'] ?? '';
+    
+    if ($action === 'manual_attendance') {
+        try {
+            // Validate required fields
+            if (empty($_POST['user_id']) || empty($_POST['machine_id']) || empty($_POST['log_type'])) {
+                $missing = [];
+                if (empty($_POST['user_id'])) $missing[] = 'user_id';
+                if (empty($_POST['machine_id'])) $missing[] = 'machine_id';
+                if (empty($_POST['log_type'])) $missing[] = 'log_type';
+                
+                error_log("Missing required fields: " . implode(', ', $missing));
+                echo json_encode(['success' => false, 'message' => 'جميع الحقول مطلوبة: ' . implode(', ', $missing)]);
+                exit;
+            }
+            
+            // Check if user exists
+            $user = $userModel->getByUserId($_POST['user_id']);
+            if (!$user) {
+                echo json_encode(['success' => false, 'message' => 'المستخدم غير موجود']);
+                exit;
+            }
+            
+            // Check if machine exists
+            $machine = $machineModel->getById($_POST['machine_id']);
+            if (!$machine) {
+                echo json_encode(['success' => false, 'message' => 'الجهاز غير موجود']);
+                exit;
+            }
+            
+            // Create attendance log
+            $data = [
+                'machine_id' => $_POST['machine_id'],
+                'user_id' => $_POST['user_id'],
+                'log_time' => $_POST['log_time'] ?: date('Y-m-d H:i:s'),
+                'log_type' => $_POST['log_type'],
+                'raw_data' => json_encode([
+                    'manual_entry' => true,
+                    'admin_user' => 'admin', // يمكن تحسينها لاحقاً لتسجيل المدير الفعلي
+                    'notes' => $_POST['notes'] ?? ''
+                ])
+            ];
+            
+            $result = $attendanceModel->create($data);
+            if ($result) {
+                echo json_encode(['success' => true, 'message' => 'تم تسجيل الحضور بنجاح']);
+            } else {
+                // Get detailed error information
+                $errorInfo = $attendanceModel->getLastError();
+                error_log("Attendance creation failed: " . print_r($errorInfo, true));
+                echo json_encode(['success' => false, 'message' => 'فشل في تسجيل الحضور: ' . $errorInfo]);
+            }
+        } catch (Exception $e) {
+            error_log("Manual attendance error: " . $e->getMessage());
+            error_log("Stack trace: " . $e->getTraceAsString());
+            echo json_encode(['success' => false, 'message' => 'حدث خطأ في تسجيل الحضور: ' . $e->getMessage()]);
+        }
+        exit;
+    } else {
+        error_log("Unknown action: " . $action);
+        echo json_encode(['success' => false, 'message' => 'إجراء غير معروف']);
+        exit;
+    }
+}
 
 // Get filter parameters
 $filters = [
@@ -47,6 +122,18 @@ $stats = $attendanceModel->getStats($filters);
             <i class="fas fa-fingerprint"></i>
             نظام البايومترك
         </a>
+        
+        <div style="display: flex; align-items: center; gap: 1rem;">
+            <span style="color: rgba(255,255,255,0.8); font-size: 0.9rem;">
+                <i class="fas fa-user-shield"></i>
+                مرحباً <?= Auth::getAdminName() ?>
+            </span>
+            <a href="logout.php" class="btn btn-outline" style="padding: 0.5rem 1rem; font-size: 0.9rem;" 
+               onclick="return confirm('هل تريد تسجيل الخروج؟')">
+                <i class="fas fa-sign-out-alt"></i>
+                خروج
+            </a>
+        </div>
         
         <button class="navbar-toggle" id="menuToggle" onclick="toggleNavbar()">
             <div class="hamburger">
@@ -98,14 +185,6 @@ $stats = $attendanceModel->getStats($filters);
                 </a>
             </li>
             <li class="nav-item">
-                <a href="commands.php" class="nav-link">
-                    <div class="nav-icon">
-                        <i class="fas fa-terminal"></i>
-                    </div>
-                    <span class="nav-text">الأوامر</span>
-                </a>
-            </li>
-            <li class="nav-item">
                 <a href="reports.php" class="nav-link">
                     <div class="nav-icon">
                         <i class="fas fa-chart-bar"></i>
@@ -148,7 +227,11 @@ $stats = $attendanceModel->getStats($filters);
                     <h1 class="page-title">سجل الحضور</h1>
                     <p class="page-subtitle">عرض وتصفية سجلات الحضور والانصراف</p>
                 </div>
-                <div>
+                <div style="display: flex; gap: 1rem;">
+                    <button class="btn btn-primary" onclick="showManualAttendanceModal()">
+                        <i class="fas fa-user-plus"></i>
+                        تسجيل حضور يدوي
+                    </button>
                     <button class="btn btn-success" onclick="exportToCSV()">
                         <i class="fas fa-download"></i>
                         تصدير CSV
@@ -261,9 +344,7 @@ $stats = $attendanceModel->getStats($filters);
                                 <th>الجهاز</th>
                                 <th>وقت السجل</th>
                                 <th>نوع السجل</th>
-                                <th>نوع التحقق</th>
-                                <th>درجة الحرارة</th>
-                                <th>حالة الكمامة</th>
+                                <th>طريقة التحقق</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -274,34 +355,33 @@ $stats = $attendanceModel->getStats($filters);
                                 <td><?= htmlspecialchars($log['machine_name'] ?? 'غير معروف') ?></td>
                                 <td><?= date('Y-m-d H:i:s', strtotime($log['log_time'])) ?></td>
                                 <td>
-                                    <span class="status <?= $log['log_type'] == 'check_in' ? 'online' : 'warning' ?>">
-                                        <?= $log['log_type'] == 'check_in' ? 'حضور' : 'انصراف' ?>
+                                    <?php
+                                    $log_types = [
+                                        'check_in' => ['text' => '🟢 حضور', 'class' => 'online'],
+                                        'check_out' => ['text' => '🔴 انصراف', 'class' => 'offline'],
+                                        'break_out' => ['text' => '🟡 استراحة', 'class' => 'warning'],
+                                        'break_in' => ['text' => '🟢 عودة', 'class' => 'online']
+                                    ];
+                                    $type_info = $log_types[$log['log_type']] ?? ['text' => $log['log_type'], 'class' => 'warning'];
+                                    ?>
+                                    <span class="status <?= $type_info['class'] ?>">
+                                        <?= $type_info['text'] ?>
                                     </span>
                                 </td>
                                 <td>
                                     <?php
                                     $verify_icons = [
-                                        'fingerprint' => 'fas fa-fingerprint',
-                                        'face' => 'fas fa-user-circle',
-                                        'card' => 'fas fa-credit-card',
-                                        'password' => 'fas fa-key'
+                                        'fingerprint' => ['icon' => 'fas fa-fingerprint', 'text' => 'بصمة الإصبع', 'color' => '#3498db'],
+                                        'face' => ['icon' => 'fas fa-user-circle', 'text' => 'الوجه', 'color' => '#e74c3c'],
+                                        'password' => ['icon' => 'fas fa-key', 'text' => 'يدوي', 'color' => '#9b59b6'],
+                                        'fingerprint_face' => ['icon' => 'fas fa-fingerprint', 'text' => 'بصمة + وجه', 'color' => '#1abc9c']
                                     ];
-                                    $icon = $verify_icons[$log['verify_type']] ?? 'fas fa-question';
+                                    $verify_info = $verify_icons[$log['verify_type']] ?? ['icon' => 'fas fa-question', 'text' => $log['verify_type'], 'color' => '#95a5a6'];
                                     ?>
-                                    <i class="<?= $icon ?>"></i>
-                                    <?= ucfirst($log['verify_type']) ?>
-                                </td>
-                                <td>
-                                    <?= $log['temperature'] ? $log['temperature'] . '°C' : '-' ?>
-                                </td>
-                                <td>
-                                    <?php if ($log['mask_status'] !== null): ?>
-                                        <span class="status <?= $log['mask_status'] ? 'online' : 'offline' ?>">
-                                            <?= $log['mask_status'] ? 'نعم' : 'لا' ?>
-                                        </span>
-                                    <?php else: ?>
-                                        -
-                                    <?php endif; ?>
+                                    <span style="color: <?= $verify_info['color'] ?>; display: flex; align-items: center; gap: 0.5rem;">
+                                        <i class="<?= $verify_info['icon'] ?>"></i>
+                                        <?= $verify_info['text'] ?>
+                                    </span>
                                 </td>
                             </tr>
                             <?php endforeach; ?>
@@ -312,7 +392,136 @@ $stats = $attendanceModel->getStats($filters);
         </main>
     </div>
 
+    <!-- Manual Attendance Modal -->
+    <div class="modal" id="manualAttendanceModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">تسجيل حضور يدوي</h3>
+                <button class="close-btn" onclick="closeManualAttendanceModal()">&times;</button>
+            </div>
+            <form id="manualAttendanceForm">
+                <div class="form-group">
+                    <label class="form-label" for="userSelect">المستخدم <span style="color: var(--danger)">*</span></label>
+                    <select class="form-control" id="userSelect" name="user_id" required>
+                        <option value="">اختر المستخدم</option>
+                        <?php foreach ($users as $user): ?>
+                            <option value="<?= htmlspecialchars($user['user_id']) ?>">
+                                <?= htmlspecialchars($user['name']) ?> (<?= htmlspecialchars($user['user_id']) ?>)
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label" for="machineSelect">الجهاز <span style="color: var(--danger)">*</span></label>
+                    <select class="form-control" id="machineSelect" name="machine_id" required>
+                        <option value="">اختر الجهاز</option>
+                        <?php foreach ($machines as $machine): ?>
+                            <option value="<?= $machine['id'] ?>">
+                                <?= htmlspecialchars($machine['name']) ?> - <?= htmlspecialchars($machine['location']) ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label" for="logType">نوع التسجيل <span style="color: var(--danger)">*</span></label>
+                    <select class="form-control" id="logType" name="log_type" required>
+                        <option value="check_in">🟢 حضور</option>
+                        <option value="check_out">🔴 انصراف</option>
+                        <option value="break_out">🟡 خروج لاستراحة</option>
+                        <option value="break_in">🟢 عودة من استراحة</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label" for="logTime">وقت التسجيل</label>
+                    <input type="datetime-local" class="form-control" id="logTime" name="log_time" 
+                           value="<?= date('Y-m-d\TH:i') ?>">
+                    <small style="color: rgba(255,255,255,0.7);">اتركه فارغاً لاستخدام الوقت الحالي</small>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label" for="notes">ملاحظات</label>
+                    <textarea class="form-control" id="notes" name="notes" rows="3" 
+                              placeholder="ملاحظات إضافية (اختياري)"></textarea>
+                </div>
+                
+                <div class="d-flex gap-2 justify-content-between">
+                    <button type="button" class="btn btn-outline" onclick="closeManualAttendanceModal()">إلغاء</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save"></i>
+                        تسجيل الحضور
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <script>
+        function showManualAttendanceModal() {
+            document.getElementById('manualAttendanceModal').classList.add('show');
+        }
+
+        function closeManualAttendanceModal() {
+            document.getElementById('manualAttendanceModal').classList.remove('show');
+            document.getElementById('manualAttendanceForm').reset();
+            // Reset datetime to current time
+            document.getElementById('logTime').value = new Date().toISOString().slice(0, 16);
+        }
+
+        // Handle manual attendance form submission
+        document.getElementById('manualAttendanceForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(this);
+            formData.append('action', 'manual_attendance');
+
+            // Debug: Log form data
+            console.log('Form data being sent:');
+            for (let [key, value] of formData.entries()) {
+                console.log(key + ': ' + value);
+            }
+
+            fetch('attendance.php', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => {
+                console.log('Response status:', response.status);
+                console.log('Response headers:', response.headers);
+                if (!response.ok) {
+                    throw new Error('Network response was not ok: ' + response.status);
+                }
+                return response.text(); // Change to text first to see raw response
+            })
+            .then(text => {
+                console.log('Raw response:', text);
+                try {
+                    const data = JSON.parse(text);
+                    alert(data.message);
+                    if (data.success) {
+                        closeManualAttendanceModal();
+                        location.reload();
+                    }
+                } catch (e) {
+                    console.error('JSON parse error:', e);
+                    alert('خطأ في معالجة الاستجابة من الخادم');
+                }
+            })
+            .catch(error => {
+                console.error('Fetch error:', error);
+                alert('حدث خطأ في تسجيل الحضور: ' + error.message);
+            });
+        });
+
+        // Close modal when clicking outside
+        window.addEventListener('click', function(e) {
+            if (e.target.classList.contains('modal')) {
+                e.target.classList.remove('show');
+            }
+        });
+
         function exportToCSV() {
             const params = new URLSearchParams(window.location.search);
             params.append('export', 'csv');

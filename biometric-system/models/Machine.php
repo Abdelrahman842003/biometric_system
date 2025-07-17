@@ -39,30 +39,39 @@ class Machine {
     }
     
     public function update($id, $data) {
-        $sql = "UPDATE machines SET 
-                name = :name, 
-                location = :location, 
-                ip_address = :ip_address, 
-                serial_number = :serial_number, 
-                port = :port, 
-                adms_enabled = :adms_enabled, 
-                adms_key = :adms_key, 
-                status = :status,
-                updated_at = CURRENT_TIMESTAMP
-                WHERE id = :id";
-        
-        $stmt = $this->db->prepare($sql);
-        return $stmt->execute([
-            ':id' => $id,
-            ':name' => $data['name'],
-            ':location' => $data['location'],
-            ':ip_address' => $data['ip_address'],
-            ':serial_number' => $data['serial_number'],
-            ':port' => $data['port'],
-            ':adms_enabled' => $data['adms_enabled'],
-            ':adms_key' => $data['adms_key'],
-            ':status' => $data['status']
-        ]);
+        try {
+            $sql = "UPDATE machines SET 
+                    name = :name, 
+                    location = :location, 
+                    ip_address = :ip_address, 
+                    serial_number = :serial_number, 
+                    port = :port, 
+                    adms_enabled = :adms_enabled, 
+                    adms_key = :adms_key, 
+                    status = :status,
+                    updated_at = CURRENT_TIMESTAMP
+                    WHERE id = :id";
+            
+            $stmt = $this->db->prepare($sql);
+            $params = [
+                ':id' => $id,
+                ':name' => $data['name'],
+                ':location' => $data['location'] ?: '',
+                ':ip_address' => $data['ip_address'],
+                ':serial_number' => $data['serial_number'] ?: '',
+                ':port' => $data['port'] ?: 4370,
+                ':adms_enabled' => $data['adms_enabled'] ?: 0,
+                ':adms_key' => $data['adms_key'] ?: '',
+                ':status' => $data['status'] ?: 'active'
+            ];
+            
+            $result = $stmt->execute($params);
+            
+            return $result;
+        } catch (PDOException $e) {
+            error_log("Machine update error: " . $e->getMessage());
+            return false;
+        }
     }
     
     public function delete($id) {
