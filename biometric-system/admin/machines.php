@@ -143,6 +143,7 @@ $machines = $machineModel->getAll();
     <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="../assets/css/style.css">
+    <link rel="stylesheet" href="../assets/css/select-fix.css">
     <style>
         /* Additional styles for machines page */
     </style>
@@ -461,6 +462,43 @@ $machines = $machineModel->getAll();
         
         #admsKeyGroup, #admsEnabledGroup {
             transition: all 0.3s ease;
+        }
+        
+        /* Fix select dropdown styling */
+        select.form-control {
+            background-color: rgba(255, 255, 255, 0.05) !important;
+            color: white !important;
+            border: 1px solid rgba(255, 255, 255, 0.2) !important;
+        }
+        
+        select.form-control option {
+            background-color: #2a2d3a !important;
+            color: white !important;
+            padding: 0.5rem !important;
+        }
+        
+        select.form-control option:hover {
+            background-color: var(--primary, #4f46e5) !important;
+            color: white !important;
+        }
+        
+        select.form-control option:checked,
+        select.form-control option:focus {
+            background-color: var(--primary, #4f46e5) !important;
+            color: white !important;
+        }
+        
+        /* For WebKit browsers (Chrome, Safari) */
+        select.form-control option:disabled {
+            background-color: #1a1d29 !important;
+            color: #666 !important;
+        }
+        
+        /* For better compatibility across browsers */
+        select.form-control:focus {
+            border-color: var(--primary, #4f46e5) !important;
+            outline: none !important;
+            box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.2) !important;
         }
     </style>
 

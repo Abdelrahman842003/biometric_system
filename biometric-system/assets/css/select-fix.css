@@ -1,0 +1,77 @@
+/* Additional CSS for select dropdown dark theme fix */
+/* This file addresses the white background issue in select options */
+
+/* General select styling for dark theme */
+select.form-control,
+select[class*="form"] {
+    background: rgba(42, 45, 58, 0.9) !important;
+    color: #ffffff !important;
+    border: 1px solid rgba(255, 255, 255, 0.2) !important;
+}
+
+/* Option styling for all browsers */
+select.form-control option,
+select[class*="form"] option {
+    background-color: #2a2d3a !important;
+    color: #ffffff !important;
+    padding: 8px 12px !important;
+    border: none !important;
+}
+
+/* Hover and focus states */
+select.form-control option:hover,
+select[class*="form"] option:hover {
+    background-color: #4263EB !important;
+    color: #ffffff !important;
+}
+
+select.form-control option:checked,
+select.form-control option:focus,
+select[class*="form"] option:checked,
+select[class*="form"] option:focus {
+    background-color: #4263EB !important;
+    color: #ffffff !important;
+}
+
+/* Browser-specific fixes */
+
+/* Chrome and Safari */
+@media screen and (-webkit-min-device-pixel-ratio: 0) {
+    select.form-control option {
+        background: #2a2d3a !important;
+        color: white !important;
+    }
+}
+
+/* Firefox */
+@-moz-document url-prefix() {
+    select.form-control option {
+        background-color: #2a2d3a !important;
+        color: white !important;
+    }
+    
+    select.form-control option:hover {
+        background-color: #4263EB !important;
+    }
+}
+
+/* Edge */
+@supports (-ms-ime-align: auto) {
+    select.form-control option {
+        background-color: #2a2d3a !important;
+        color: white !important;
+    }
+}
+
+/* Modern browsers using CSS custom properties */
+select.form-control {
+    color-scheme: dark;
+}
+
+/* Fallback for older browsers */
+@supports not (color-scheme: dark) {
+    select.form-control option {
+        background: #2a2d3a !important;
+        color: #fff !important;
+    }
+}

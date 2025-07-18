@@ -1267,6 +1267,48 @@ body {
     color: rgba(255, 255, 255, 0.5);
 }
 
+/* Select dropdown specific styling */
+select.form-control {
+    background: rgba(255, 255, 255, 0.05);
+    color: white;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    cursor: pointer;
+}
+
+select.form-control option {
+    background-color: #2a2d3a;
+    color: white;
+    padding: 0.5rem;
+    border: none;
+}
+
+select.form-control option:hover {
+    background-color: var(--primary);
+    color: white;
+}
+
+select.form-control option:checked,
+select.form-control option:focus {
+    background-color: var(--primary);
+    color: white;
+}
+
+/* For better dark theme support */
+@media (prefers-color-scheme: dark) {
+    select.form-control option {
+        background-color: #1a1d29;
+        color: #ffffff;
+    }
+}
+
+/* Firefox specific fixes */
+@-moz-document url-prefix() {
+    select.form-control option {
+        background-color: #2a2d3a !important;
+        color: white !important;
+    }
+}
+
 /* Modals */
 .modal {
     display: none;
