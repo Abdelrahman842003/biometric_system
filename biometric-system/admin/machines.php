@@ -16,20 +16,32 @@ if (isset($_SERVER['REQUEST_METHOD']) && $_SERVER['REQUEST_METHOD'] === 'POST') 
     switch ($action) {
         case 'add_machine':
             try {
-                // Validate required fields
-                if (empty($_POST['name']) || empty($_POST['ip_address'])) {
-                    echo json_encode(['success' => false, 'message' => 'اسم الجهاز وعنوان IP مطلوبان']);
+                $connectionType = trim($_POST['connection_type'] ?: 'adms');
+                
+                // Validate required fields based on connection type
+                if (empty($_POST['name'])) {
+                    echo json_encode(['success' => false, 'message' => 'اسم الجهاز مطلوب']);
+                    exit;
+                }
+                
+                if ($connectionType === 'public_ip' && empty($_POST['ip_address'])) {
+                    echo json_encode(['success' => false, 'message' => 'عنوان IP مطلوب للاتصال المباشر']);
+                    exit;
+                }
+                
+                if ($connectionType === 'adms' && empty($_POST['adms_key'])) {
+                    echo json_encode(['success' => false, 'message' => 'مفتاح ADMS مطلوب لاتصال ADMS']);
                     exit;
                 }
                 
                 $data = [
                     'name' => trim($_POST['name']),
                     'location' => trim($_POST['location'] ?: ''),
-                    'ip_address' => trim($_POST['ip_address']),
+                    'ip_address' => $connectionType === 'adms' ? '0.0.0.0' : trim($_POST['ip_address']),
                     'serial_number' => trim($_POST['serial_number'] ?: ''),
-                    'port' => (int)($_POST['port'] ?: 4370),
-                    'connection_type' => trim($_POST['connection_type'] ?: 'adms'),
-                    'adms_enabled' => isset($_POST['adms_enabled']) ? 1 : 0,
+                    'port' => $connectionType === 'adms' ? 80 : (int)($_POST['port'] ?: 4370),
+                    'connection_type' => $connectionType,
+                    'adms_enabled' => $connectionType === 'adms' ? 1 : 0,
                     'adms_key' => trim($_POST['adms_key'] ?: ''),
                     'status' => $_POST['status'] ?: 'active'
                 ];
@@ -48,6 +60,7 @@ if (isset($_SERVER['REQUEST_METHOD']) && $_SERVER['REQUEST_METHOD'] === 'POST') 
         case 'edit_machine':
             try {
                 $id = $_POST['id'];
+                $connectionType = trim($_POST['connection_type'] ?: 'adms');
                 
                 // Validate required fields
                 if (empty($id)) {
@@ -55,19 +68,29 @@ if (isset($_SERVER['REQUEST_METHOD']) && $_SERVER['REQUEST_METHOD'] === 'POST') 
                     exit;
                 }
                 
-                if (empty($_POST['name']) || empty($_POST['ip_address'])) {
-                    echo json_encode(['success' => false, 'message' => 'اسم الجهاز وعنوان IP مطلوبان']);
+                if (empty($_POST['name'])) {
+                    echo json_encode(['success' => false, 'message' => 'اسم الجهاز مطلوب']);
+                    exit;
+                }
+                
+                if ($connectionType === 'public_ip' && empty($_POST['ip_address'])) {
+                    echo json_encode(['success' => false, 'message' => 'عنوان IP مطلوب للاتصال المباشر']);
+                    exit;
+                }
+                
+                if ($connectionType === 'adms' && empty($_POST['adms_key'])) {
+                    echo json_encode(['success' => false, 'message' => 'مفتاح ADMS مطلوب لاتصال ADMS']);
                     exit;
                 }
                 
                 $data = [
                     'name' => trim($_POST['name']),
                     'location' => trim($_POST['location'] ?: ''),
-                    'ip_address' => trim($_POST['ip_address']),
+                    'ip_address' => $connectionType === 'adms' ? '0.0.0.0' : trim($_POST['ip_address']),
                     'serial_number' => trim($_POST['serial_number'] ?: ''),
-                    'port' => (int)($_POST['port'] ?: 4370),
-                    'connection_type' => trim($_POST['connection_type'] ?: 'adms'),
-                    'adms_enabled' => isset($_POST['adms_enabled']) ? 1 : 0,
+                    'port' => $connectionType === 'adms' ? 80 : (int)($_POST['port'] ?: 4370),
+                    'connection_type' => $connectionType,
+                    'adms_enabled' => $connectionType === 'adms' ? 1 : 0,
                     'adms_key' => trim($_POST['adms_key'] ?: ''),
                     'status' => $_POST['status'] ?: 'active'
                 ];
@@ -268,8 +291,20 @@ $machines = $machineModel->getAll();
                                 <td><?= $machine['id'] ?></td>
                                 <td><?= htmlspecialchars($machine['name']) ?></td>
                                 <td><?= htmlspecialchars($machine['location']) ?></td>
-                                <td><?= htmlspecialchars($machine['ip_address']) ?></td>
-                                <td><?= $machine['port'] ?></td>
+                                <td>
+                                    <?php if ($machine['connection_type'] === 'adms'): ?>
+                                        <span style="color: #666; font-style: italic;">غير مطلوب</span>
+                                    <?php else: ?>
+                                        <?= htmlspecialchars($machine['ip_address']) ?>
+                                    <?php endif; ?>
+                                </td>
+                                <td>
+                                    <?php if ($machine['connection_type'] === 'adms'): ?>
+                                        <span style="color: #666; font-style: italic;">غير مطلوب</span>
+                                    <?php else: ?>
+                                        <?= $machine['port'] ?>
+                                    <?php endif; ?>
+                                </td>
                                 <td>
                                     <span class="status <?= $machine['connection_type'] === 'adms' ? 'online' : 'offline' ?>">
                                         <?= $machine['connection_type'] === 'adms' ? 'ADMS' : 'Public IP' ?>
@@ -325,10 +360,13 @@ $machines = $machineModel->getAll();
                 
                 <div class="form-group">
                     <label class="form-label" for="machineIp">عنوان IP <span style="color: var(--danger)">*</span></label>
-                    <input type="text" class="form-control" id="machineIp" name="ip_address" required>
+                    <input type="text" class="form-control" id="machineIp" name="ip_address" required placeholder="مثال: 192.168.1.100">
+                    <small class="form-help" id="ipHelp">
+                        تأكد من أن عنوان IP صحيح ويمكن الوصول إليه من الخادم
+                    </small>
                 </div>
                 
-                <div class="form-group">
+                <div class="form-group" id="portGroup">
                     <label class="form-label" for="machinePort">المنفذ</label>
                     <input type="number" class="form-control" id="machinePort" name="port" value="4370">
                 </div>
@@ -336,13 +374,19 @@ $machines = $machineModel->getAll();
                 <div class="form-group">
                     <label class="form-label" for="connectionType">نوع الاتصال <span style="color: var(--danger)">*</span></label>
                     <select class="form-control" id="connectionType" name="connection_type" onchange="toggleConnectionFields()">
-                        <option value="adms">ADMS (Push من الجهاز)</option>
+                        <option value="adms">ADMS (Push من الجهاز) - موصى به</option>
                         <option value="public_ip">Public IP (Pull من الخادم)</option>
                     </select>
-                    <small class="form-help">
-                        • ADMS: الجهاز يرسل البيانات تلقائياً للخادم<br>
-                        • Public IP: الخادم يطلب البيانات من الجهاز مباشرة
-                    </small>
+                    <div class="connection-help" id="connectionHelp">
+                        <div class="help-adms" style="background: rgba(0, 214, 143, 0.1); padding: 0.75rem; border-radius: 0.25rem; margin-top: 0.5rem;">
+                            <strong>ADMS:</strong> الجهاز يرسل البيانات تلقائياً للخادم<br>
+                            <small>• يحتاج فقط: مفتاح ADMS<br>• لا يحتاج IP أو منفذ (الجهاز يتصل بالخادم)</small>
+                        </div>
+                        <div class="help-public" style="background: rgba(255, 170, 0, 0.1); padding: 0.75rem; border-radius: 0.25rem; margin-top: 0.5rem; display: none;">
+                            <strong>Public IP:</strong> الخادم يطلب البيانات مباشرة من الجهاز<br>
+                            <small>• يحتاج: IP عام + فتح المنفذ 4370<br>• لا يحتاج مفتاح ADMS</small>
+                        </div>
+                    </div>
                 </div>
                 
                 <div class="form-group">
@@ -351,9 +395,15 @@ $machines = $machineModel->getAll();
                 </div>
                 
                 <div class="form-group" id="admsKeyGroup">
-                    <label class="form-label" for="machineAdmsKey">مفتاح ADMS</label>
-                    <input type="text" class="form-control" id="machineAdmsKey" name="adms_key" placeholder="يتم الحصول عليه من إعدادات الجهاز">
-                    <small class="form-help">مطلوب فقط عند استخدام ADMS</small>
+                    <label class="form-label" for="machineAdmsKey">
+                        مفتاح ADMS <span style="color: var(--danger)">*</span>
+                        <small style="font-weight: normal; color: var(--text-muted);">(مطلوب للـ ADMS)</small>
+                    </label>
+                    <input type="text" class="form-control" id="machineAdmsKey" name="adms_key" placeholder="نفس المفتاح المحدد في config/database.php">
+                    <small class="form-help">
+                        <strong>مهم:</strong> يجب أن يكون نفس المفتاح المحدد في ملف config/database.php<br>
+                        هذا المفتاح يستخدم للتأكد من أن البيانات تأتي من جهاز موثوق
+                    </small>
                 </div>
                 
                 <div class="form-group">
@@ -419,16 +469,49 @@ $machines = $machineModel->getAll();
             const connectionType = document.getElementById('connectionType').value;
             const admsKeyGroup = document.getElementById('admsKeyGroup');
             const admsEnabledGroup = document.getElementById('admsEnabledGroup');
+            const helpAdms = document.querySelector('.help-adms');
+            const helpPublic = document.querySelector('.help-public');
+            const ipGroup = document.querySelector('label[for="machineIp"]').closest('.form-group');
+            const portGroup = document.getElementById('portGroup');
+            const ipInput = document.getElementById('machineIp');
             
             if (connectionType === 'adms') {
+                // Show ADMS fields
                 admsKeyGroup.style.display = 'block';
                 admsEnabledGroup.style.display = 'block';
                 document.getElementById('machineAdmsEnabled').checked = true;
+                
+                // Hide IP and Port for ADMS (not needed)
+                ipGroup.style.display = 'none';
+                portGroup.style.display = 'none';
+                
+                // Set dummy values for validation
+                ipInput.value = '0.0.0.0';
+                ipInput.removeAttribute('required');
+                
+                // Show/hide help
+                helpAdms.style.display = 'block';
+                helpPublic.style.display = 'none';
+                
             } else {
+                // Hide ADMS fields
                 admsKeyGroup.style.display = 'none';
                 admsEnabledGroup.style.display = 'none';
                 document.getElementById('machineAdmsEnabled').checked = false;
                 document.getElementById('machineAdmsKey').value = '';
+                
+                // Show IP and Port for Public IP
+                ipGroup.style.display = 'block';
+                portGroup.style.display = 'block';
+                
+                // Restore IP field requirements
+                ipInput.value = '';
+                ipInput.setAttribute('required', 'required');
+                ipInput.placeholder = 'مثال: 203.123.45.67';
+                
+                // Show/hide help
+                helpAdms.style.display = 'none';
+                helpPublic.style.display = 'block';
             }
         }
 
@@ -461,10 +544,15 @@ $machines = $machineModel->getAll();
                         document.getElementById('machineId').value = machine.id;
                         document.getElementById('machineName').value = machine.name || '';
                         document.getElementById('machineLocation').value = machine.location || '';
-                        document.getElementById('machineIp').value = machine.ip_address || '';
-                        document.getElementById('machinePort').value = machine.port || '4370';
-                        document.getElementById('machineSerial').value = machine.serial_number || '';
                         document.getElementById('connectionType').value = machine.connection_type || 'adms';
+                        
+                        // Set IP and Port only for Public IP connections
+                        if (machine.connection_type === 'public_ip') {
+                            document.getElementById('machineIp').value = machine.ip_address || '';
+                            document.getElementById('machinePort').value = machine.port || '4370';
+                        }
+                        
+                        document.getElementById('machineSerial').value = machine.serial_number || '';
                         document.getElementById('machineAdmsKey').value = machine.adms_key || '';
                         document.getElementById('machineStatus').value = machine.status || 'active';
                         document.getElementById('machineAdmsEnabled').checked = machine.adms_enabled == 1;
@@ -525,23 +613,35 @@ $machines = $machineModel->getAll();
             
             // Basic validation
             const name = document.getElementById('machineName').value.trim();
-            const ip = document.getElementById('machineIp').value.trim();
+            const connectionType = document.getElementById('connectionType').value;
             
             if (!name) {
                 alert('اسم الجهاز مطلوب');
                 return;
             }
             
-            if (!ip) {
-                alert('عنوان IP مطلوب');
-                return;
-            }
-            
-            // IP validation
-            const ipRegex = /^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$/;
-            if (!ipRegex.test(ip)) {
-                alert('عنوان IP غير صحيح');
-                return;
+            // Validate based on connection type
+            if (connectionType === 'public_ip') {
+                const ip = document.getElementById('machineIp').value.trim();
+                
+                if (!ip) {
+                    alert('عنوان IP مطلوب للاتصال المباشر');
+                    return;
+                }
+                
+                // IP validation
+                const ipRegex = /^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$/;
+                if (!ipRegex.test(ip)) {
+                    alert('عنوان IP غير صحيح');
+                    return;
+                }
+            } else if (connectionType === 'adms') {
+                const admsKey = document.getElementById('machineAdmsKey').value.trim();
+                
+                if (!admsKey) {
+                    alert('مفتاح ADMS مطلوب لاتصال ADMS');
+                    return;
+                }
             }
             
             const formData = new FormData(this);
