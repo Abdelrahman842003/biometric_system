@@ -3,3 +3,11 @@
 2025-07-19 17:16:59 - Request - {"method":"GET","ip":"127.0.0.1","data":[]}
 2025-07-19 17:33:39 - ADMS Request - {"method":"GET","ip":"127.0.0.1","user_agent":"Mozilla\/5.0 (X11; Linux x86_64) AppleWebKit\/537.36 (KHTML, like Gecko) Chrome\/138.0.0.0 Safari\/537.36","data":[]}
 2025-07-19 17:33:39 - Auto-detected machine IP - {"ip":"127.0.0.1"}
+2025-07-19 17:54:42 - ADMS Request - {"method":"GET","ip":"127.0.0.1","user_agent":"curl\/8.5.0","data":[]}
+2025-07-19 17:54:42 - Auto-detected machine IP - {"ip":"127.0.0.1"}
+2025-07-19 18:02:12 - ADMS Request - {"method":"GET","ip":"127.0.0.1","user_agent":"curl\/8.5.0","data":[]}
+2025-07-19 18:02:12 - Auto-detected machine IP - {"ip":"127.0.0.1"}
+2025-07-19 18:02:24 - ADMS Request - {"method":"GET","ip":"127.0.0.1","user_agent":"Mozilla\/5.0 (X11; Linux x86_64) AppleWebKit\/537.36 (KHTML, like Gecko) Chrome\/138.0.0.0 Safari\/537.36","data":[]}
+2025-07-19 18:02:24 - Auto-detected machine IP - {"ip":"127.0.0.1"}
+2025-07-19 18:02:25 - ADMS Request - {"method":"GET","ip":"127.0.0.1","user_agent":"Mozilla\/5.0 (X11; Linux x86_64) AppleWebKit\/537.36 (KHTML, like Gecko) Code\/1.101.2 Chrome\/134.0.6998.205 Electron\/35.5.1 Safari\/537.36","data":{"id":"1204d113-f0e2-4022-ab80-64333c066de5","vscodeBrowserReqId":"1752937345611"}}
+2025-07-19 18:02:25 - Auto-detected machine IP - {"ip":"127.0.0.1"}

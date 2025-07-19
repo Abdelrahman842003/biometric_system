@@ -9,6 +9,11 @@ RewriteEngine On
 RewriteCond %{HTTPS} off
 RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
 
+# URL Rewriting for API endpoints
+# Direct access to machine.php for API calls (no auth redirect)
+
+RewriteRule ^1$ api/adms-endpoint.php [L,QSA]
+
 # Protect sensitive files
 <FilesMatch "\.(sql|log|ini|conf)$">
     Order deny,allow
