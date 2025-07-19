@@ -137,6 +137,12 @@ try {
 }
 
 function handleAttendanceLog($data, $machineModel, $attendanceModel) {
+    // Auto-detect machine IP if not provided
+    if (empty($data['machine_ip'])) {
+        $data['machine_ip'] = $_SERVER['REMOTE_ADDR'];
+        logActivity('Auto-detected machine IP', ['ip' => $data['machine_ip']]);
+    }
+    
     // Required fields for attendance log
     $required = ['machine_ip', 'user_id', 'timestamp'];
     foreach ($required as $field) {
@@ -223,7 +229,7 @@ function handleAttendanceLog($data, $machineModel, $attendanceModel) {
 }
 
 function handleHeartbeat($data, $machineModel) {
-    $machineIp = $data['machine_ip'] ?? $data['ip'] ?? '';
+    $machineIp = $data['machine_ip'] ?? $data['ip'] ?? $_SERVER['REMOTE_ADDR'];
     
     if (empty($machineIp)) {
         http_response_code(400);
@@ -251,7 +257,7 @@ function handleHeartbeat($data, $machineModel) {
 }
 
 function handleStatusUpdate($data, $machineModel) {
-    $machineIp = $data['machine_ip'] ?? $data['ip'] ?? '';
+    $machineIp = $data['machine_ip'] ?? $data['ip'] ?? $_SERVER['REMOTE_ADDR'];
     
     if (empty($machineIp)) {
         http_response_code(400);
